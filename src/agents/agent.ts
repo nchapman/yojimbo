@@ -35,7 +35,7 @@ export class Agent extends Tool {
     this.tools = config.tools ?? [];
     this.maxIter = config.maxIter ?? Math.max(this.tools.length, 5);
     this.verbose = config.verbose ?? false;
-
+    this.funcName = this.getFuncName("Agent");
     this.systemPrompt = `You are a helpful AI agent. You will act in the role provided by the user and provide a helpful answer to the input.`;
   }
 
@@ -100,12 +100,12 @@ export class Agent extends Tool {
       lines.push(`Your backstory: ${this.backstory}`);
     }
 
-    if (this.tools.length > 0) {
-      lines.push(`You can use these tools:`);
-      this.tools.forEach((tool) => {
-        lines.push(`- ${tool.name}: ${tool.description}`);
-      });
-    }
+    // if (this.tools.length > 0) {
+    //   lines.push(`You can use these tools:`);
+    //   this.tools.forEach((tool) => {
+    //     lines.push(`- ${tool.name}: ${tool.description}`);
+    //   });
+    // }
 
     lines.push(`Provided input: ${JSON.stringify(args)}`);
     lines.push(`Respond with a helpful answer.`);

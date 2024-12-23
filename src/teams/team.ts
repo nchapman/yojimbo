@@ -22,9 +22,8 @@ export class Team extends Agent {
   constructor(config: TeamConfig) {
     super({
       ...config,
-      role: config.role ?? "Manager",
-      goal:
-        config.goal ?? "Provide a helpful answer using the provided agents.",
+      role: config.role ?? "Agent Manager",
+      goal: config.goal ?? "Use the provided agents to respond to the input",
     });
     this.agents = config.agents;
     this.plan = config.plan ?? null;
@@ -106,12 +105,12 @@ export class Team extends Agent {
       lines.push(`Your backstory: ${this.backstory}`);
     }
 
-    if (this.agents.length > 0) {
-      lines.push(`You can use these agents:`);
-      this.agents.forEach((agent) => {
-        lines.push(`- ${agent.name}: ${agent.description}`);
-      });
-    }
+    // if (this.agents.length > 0) {
+    //   lines.push(`You can use these agents:`);
+    //   this.agents.forEach((agent) => {
+    //     lines.push(`- ${agent.name}: ${agent.description}`);
+    //   });
+    // }
 
     if (this.plan) {
       lines.push(`Follow this plan:`);

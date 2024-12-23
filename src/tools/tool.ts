@@ -41,10 +41,10 @@ const DEFAULT_PARAMETERS: JSONSchema<DefaultToolInput> = {
 };
 
 export abstract class Tool<TArgs = DefaultToolInput, TReturn = string> {
-  public readonly funcName: string;
-  public readonly name: string;
-  public readonly description: string;
-  public readonly parameters: JSONSchema<TArgs>;
+  funcName: string;
+  name: string;
+  description: string;
+  parameters: JSONSchema<TArgs>;
 
   constructor(
     name: string,
@@ -54,7 +54,7 @@ export abstract class Tool<TArgs = DefaultToolInput, TReturn = string> {
     this.name = name;
     this.description = description;
     this.parameters = parameters;
-    this.funcName = name.replace(/\s+/g, "");
+    this.funcName = this.getFuncName("Tool");
   }
 
   public toSchema(): ChatCompletionTool {
@@ -73,4 +73,15 @@ export abstract class Tool<TArgs = DefaultToolInput, TReturn = string> {
   }
 
   abstract execute(args: TArgs): Promise<TReturn>;
+
+  protected getFuncName(type: "Agent" | "Tool") {
+    let funcName = this.name.replace(/\s+/g, "");
+
+    // Append Agent if it's not already in the name
+    if (!funcName.toLowerCase().includes(type.toLowerCase())) {
+      funcName += type;
+    }
+
+    return funcName;
+  }
 }

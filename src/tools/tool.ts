@@ -1,5 +1,3 @@
-import { ChatCompletionTool } from "openai/resources/chat/completions";
-
 export type JSONSchemaType =
   | "string"
   | "number"
@@ -17,7 +15,7 @@ export type JSONSchema<T> = {
   required?: (keyof T)[];
 };
 
-export type ChatCompletionTool = {
+export type ChatCompletionTool<T = any> = {
   name: string;
   description: string;
   parameters: {
@@ -36,7 +34,7 @@ const DEFAULT_PARAMETERS: JSONSchema<DefaultToolInput> = {
   properties: {
     input: {
       type: "string",
-      description: "The input for the tool",
+      description: "Minimum input needed to complete the task",
     },
   },
   required: ["input"],

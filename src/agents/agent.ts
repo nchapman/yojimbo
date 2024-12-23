@@ -1,7 +1,7 @@
 import {
   ChatCompletion,
   ChatCompletionMessageParam,
-  ChatCompletionTool,
+  ChatCompletionCreateParamsNonStreaming,
 } from "openai/resources/chat/completions";
 import { Tool, DefaultToolInput, JSONSchema } from "../tools/tool";
 
@@ -76,8 +76,11 @@ export class Agent extends Tool {
     return "Max iterations reached without final response";
   }
 
-  protected getToolSchemas() {
-    return this.tools.map((tool) => tool.toSchema());
+  public getToolSchemas() {
+    const toolSchemas = this.tools.map((tool) => tool.toSchema());
+
+    // OpenAI wants undefined if no tools are provided
+    return toolSchemas.length > 0 ? toolSchemas : undefined;
   }
 
   protected findTool(funcName: string) {
@@ -157,7 +160,6 @@ export class Agent extends Tool {
   }
 }
 
-export type LLMCompletion = (params: {
-  messages: ChatCompletionMessageParam[];
-  tools: ChatCompletionTool[];
-}) => Promise<ChatCompletion>;
+export type LLMCompletion = (
+  params: Partial<ChatCompletionCreateParamsNonStreaming>
+) => Promise<ChatCompletion>;

@@ -36,7 +36,11 @@ export class Agent extends Tool {
     this.maxIter = config.maxIter ?? Math.max(this.tools.length, 5);
     this.verbose = config.verbose ?? false;
     this.funcName = this.getFuncName("Agent");
-    this.systemPrompt = `You are a helpful AI agent. You will act in the role provided by the user and provide a helpful answer to the input.`;
+    this.systemPrompt = this.trimBlock(`
+      You are a helpful AI agent. The user does not see any of these messages except the last one.
+      Only provide the response as requested. Do not include any intros, outros, labels, or quotes around the answer.
+      You must adhere to the provided role and goal.
+    `);
   }
 
   async execute(args: DefaultToolInput): Promise<string> {
@@ -114,7 +118,8 @@ export class Agent extends Tool {
     }
 
     lines.push(`Provided input: ${JSON.stringify(args)}`);
-    lines.push(`Respond with a helpful answer.`);
+    lines.push(`Do not mention the tools used in your response.`);
+    lines.push(`Respond as instructed.`);
 
     return lines.join("\n");
   }

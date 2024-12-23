@@ -30,6 +30,7 @@ export class Team extends Agent {
 
     // Pass tools down to agents
     this.propagateToAgents();
+    this.systemPrompt += "\nYou must follow the plan exactly.";
   }
 
   protected propagateToAgents() {
@@ -93,7 +94,13 @@ export class Team extends Agent {
   protected getPrompt(args: DefaultToolInput): string {
     const lines = this.getBasePromptLines(args);
 
-    lines.push(`Use the provided agents to respond with a helpful answer.`);
+    lines.push(
+      this.trimBlock(`
+      Use one agent at a time.
+      Make sure you incorporate all the information from the agents into your response.
+      Don't mention the agents or the plan in your response.
+    `)
+    );
 
     return lines.join("\n");
   }
@@ -103,27 +110,27 @@ export class Team extends Agent {
 
     lines.push(`Your role: ${this.role}`);
 
-    if (this.goal) {
-      lines.push(`Your goal: ${this.goal}`);
-    }
-
     if (this.backstory) {
       lines.push(`Your backstory: ${this.backstory}`);
     }
 
     if (this.agents.length > 0) {
-      lines.push(`You can use these agents:`);
+      lines.push(`You can use these agents as tools:`);
       this.agents.forEach((agent) => {
         lines.push(`- ${agent.funcName}: ${agent.description}`);
       });
     }
 
     if (this.plan) {
-      lines.push(`Follow this plan:`);
+      lines.push(`You must follow this plan exactly:`);
       lines.push(this.plan);
     }
 
     lines.push(`Provided input: ${JSON.stringify(args)}`);
+
+    if (this.goal) {
+      lines.push(`Your goal: ${this.goal}`);
+    }
 
     return lines;
   }

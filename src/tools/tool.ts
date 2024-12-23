@@ -84,4 +84,12 @@ export abstract class Tool<TArgs = DefaultToolInput, TReturn = string> {
 
     return funcName;
   }
+
+  protected trimBlock(block: string) {
+    return block
+      .trim()
+      .split("\n")
+      .map((line) => line.trim())
+      .join("\n");
+  }
 }

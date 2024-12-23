@@ -29,12 +29,18 @@ export class Team extends Agent {
     this.plan = config.plan ?? null;
 
     // Pass tools down to agents
-    this.propagateTools();
+    this.propagateToAgents();
   }
 
-  protected propagateTools() {
+  protected propagateToAgents() {
     this.agents.forEach((agent) => {
+      // Set tools to the union of the team's tools and the agent's tools
       agent.tools = Array.from(new Set([...this.tools, ...agent.tools]));
+
+      // Set llm if it's not set
+      if (!agent.llm) {
+        agent.llm = this.llm;
+      }
     });
   }
 

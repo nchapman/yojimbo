@@ -26,14 +26,12 @@ const weatherTool = new WeatherTool();
 const weatherAgent = new Agent({
   role: "Weather Reporter",
   goal: "Report the weather for a given location.",
-  llm,
   tools: [weatherTool],
 });
 
 const sillyWriterAgent = new Agent({
   role: "Silly Writer",
   goal: "Write a short silly story.",
-  llm,
 });
 
 const team = new Team({

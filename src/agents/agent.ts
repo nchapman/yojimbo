@@ -10,7 +10,7 @@ export interface AgentConfig {
   goal?: string | null;
   backstory?: string | null;
   parameters?: JSONSchema<DefaultToolInput>;
-  llm: LLMCompletion;
+  llm?: LLMCompletion;
   tools?: Tool[] | null;
   maxIter?: number | null;
   verbose?: boolean | null;
@@ -20,7 +20,7 @@ export class Agent extends Tool {
   public role: string;
   public goal: string | null;
   public backstory: string | null;
-  public llm: LLMCompletion;
+  public llm?: LLMCompletion;
   public tools: Tool[];
   public maxIter: number;
   public verbose: boolean;
@@ -40,6 +40,12 @@ export class Agent extends Tool {
   }
 
   async execute(args: DefaultToolInput): Promise<string> {
+    if (!this.llm) {
+      throw new Error(
+        "LLM not configured. Please set the llm property before executing the agent."
+      );
+    }
+
     console.log("🤖 Starting agent execution...");
     const prompt = this.getPrompt(args);
 

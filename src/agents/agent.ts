@@ -24,6 +24,7 @@ export class Agent extends Tool {
   public tools: Tool[];
   public maxIter: number;
   public verbose: boolean;
+  protected systemPrompt: string;
 
   constructor(config: AgentConfig) {
     super(config.role, config.goal ?? "", config.parameters);
@@ -34,86 +35,56 @@ export class Agent extends Tool {
     this.tools = config.tools ?? [];
     this.maxIter = config.maxIter ?? Math.max(this.tools.length, 5);
     this.verbose = config.verbose ?? false;
+
+    this.systemPrompt = `You are a helpful AI agent. You will act in the role provided by the user and provide a helpful answer to the input.`;
   }
 
   async execute(args: DefaultToolInput): Promise<string> {
     console.log("🤖 Starting agent execution...");
-    const systemPrompt = `You are a helpful AI agent. You will act in the role provided by the user and provide a helpful answer to the input.`;
     const prompt = this.getPrompt(args);
 
-    console.log("📝 System Prompt:", systemPrompt);
+    console.log("📝 System Prompt:", this.systemPrompt);
     console.log("💭 Prompt:", prompt);
 
-    const tools = this.tools.map((tool) => tool.toSchema());
+    let messages: ChatCompletionMessageParam[] = [
+      { role: "system", content: this.systemPrompt },
+      { role: "user", content: prompt },
+    ];
+    const tools = this.getToolSchemas();
 
     console.log("🔧 Tools:", tools);
 
-    console.log("📤 Sending initial request to LLM...");
-    const response = await this.llm({
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: prompt },
-      ],
-      tools,
-    });
+    let i = 0;
+    while (i < this.maxIter) {
+      console.log(`📤 Sending request to LLM (iteration ${i + 1})...`);
 
-    // Handle tool calls if present
-    if (response.choices[0]?.message?.tool_calls) {
-      const toolCalls = response.choices[0].message.tool_calls;
-      {
-        console.log(
-          "🔧 Tool calls detected:",
-          toolCalls.map((t) => `${t.function.name}(${t.function.arguments})`)
-        );
+      const response = await this.llm({ messages, tools });
+      const message = response.choices[0]?.message;
+
+      // Return the response if no tool calls are detected
+      if (!message?.tool_calls) {
+        console.log("✅ Agent execution completed without tool usage");
+        return message?.content ?? "No response generated";
       }
 
-      const toolResults = await Promise.all(
-        toolCalls.map(async (toolCall) => {
-          const tool = this.tools.find(
-            (t) => t.func_name === toolCall.function.name
-          );
-          if (!tool) {
-            throw new Error(`Tool ${toolCall.function.name} not found`);
-          }
-          console.log(`⚙️ Executing tool: ${toolCall.function.name}`);
-          const args = JSON.parse(toolCall.function.arguments);
-          const result = await tool.execute(args);
-          console.log(`🔧 Tool result:`, result);
-          return result;
-        })
-      );
-
-      console.log("📤 Sending final request to LLM with tool results...");
-      // Get final response with tool results
-      const finalResponse = await this.llm({
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: prompt },
-          {
-            role: "assistant",
-            content: response.choices[0].message.content ?? "",
-            tool_calls: toolCalls,
-          },
-          ...toolResults.map((result, index) => ({
-            role: "tool" as const,
-            content: JSON.stringify(result),
-            tool_call_id: toolCalls[index].id,
-          })),
-        ],
-        tools,
-      });
-
-      console.log("✅ Agent execution completed with tool usage");
-      return (
-        finalResponse.choices[0]?.message?.content ?? "No response generated"
-      );
+      const newMessages = await this.handleToolCalls(message);
+      messages.push(...newMessages);
+      i++;
     }
 
-    console.log("✅ Agent execution completed without tool usage");
-    return response.choices[0]?.message?.content ?? "No response generated";
+    console.log("⚠️ Max iterations reached");
+    return "Max iterations reached without final response";
   }
 
-  private getPrompt(args: DefaultToolInput): string {
+  protected getToolSchemas() {
+    return this.tools.map((tool) => tool.toSchema());
+  }
+
+  protected findTool(funcName: string) {
+    return this.tools.find((tool) => tool.funcName === funcName);
+  }
+
+  protected getPrompt(args: DefaultToolInput): string {
     const lines = [];
 
     lines.push(`Your role: ${this.role}`);
@@ -137,6 +108,52 @@ export class Agent extends Tool {
     lines.push(`Respond with a helpful answer.`);
 
     return lines.join("\n");
+  }
+
+  private async handleToolCalls(
+    message: ChatCompletion.Choice["message"]
+  ): Promise<ChatCompletionMessageParam[]> {
+    const toolCalls = message.tool_calls!;
+
+    console.log(
+      "🔧 Tool calls detected:",
+      toolCalls.map((t) => `${t.function.name}(${t.function.arguments})`)
+    );
+
+    const toolResults = await Promise.all(
+      toolCalls.map(async (toolCall) => {
+        const tool = this.findTool(toolCall.function.name);
+
+        if (!tool) {
+          throw new Error(`Tool ${toolCall.function.name} not found`);
+        }
+
+        console.log(`⚙️ Executing tool: ${toolCall.function.name}`);
+
+        const args = JSON.parse(toolCall.function.arguments);
+        const result = await tool.execute(args);
+
+        console.log(`🔧 Tool result:`, result);
+
+        return {
+          result,
+          toolCall,
+        };
+      })
+    );
+
+    return [
+      {
+        role: "assistant",
+        content: message.content ?? "",
+        tool_calls: toolCalls,
+      },
+      ...toolResults.map(({ result, toolCall }) => ({
+        role: "tool" as const,
+        content: JSON.stringify(result),
+        tool_call_id: toolCall.id,
+      })),
+    ];
   }
 }
 

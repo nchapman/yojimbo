@@ -43,7 +43,7 @@ const DEFAULT_PARAMETERS: JSONSchema<DefaultToolInput> = {
 };
 
 export abstract class Tool<TArgs = DefaultToolInput, TReturn = string> {
-  public readonly func_name: string;
+  public readonly funcName: string;
   public readonly name: string;
   public readonly description: string;
   public readonly parameters: JSONSchema<TArgs>;
@@ -56,14 +56,14 @@ export abstract class Tool<TArgs = DefaultToolInput, TReturn = string> {
     this.name = name;
     this.description = description;
     this.parameters = parameters;
-    this.func_name = name.replace(/\s+/g, "");
+    this.funcName = name.replace(/\s+/g, "");
   }
 
   public toSchema(): ChatCompletionTool {
     return {
       type: "function",
       function: {
-        name: this.func_name,
+        name: this.funcName,
         description: this.description,
         parameters: {
           type: "object",

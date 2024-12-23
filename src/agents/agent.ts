@@ -106,12 +106,12 @@ export class Agent extends Tool {
       lines.push(`Your backstory: ${this.backstory}`);
     }
 
-    // if (this.tools.length > 0) {
-    //   lines.push(`You can use these tools:`);
-    //   this.tools.forEach((tool) => {
-    //     lines.push(`- ${tool.name}: ${tool.description}`);
-    //   });
-    // }
+    if (this.tools.length > 0) {
+      lines.push(`You can use these tools:`);
+      this.tools.forEach((tool) => {
+        lines.push(`- ${tool.funcName}: ${tool.description}`);
+      });
+    }
 
     lines.push(`Provided input: ${JSON.stringify(args)}`);
     lines.push(`Respond with a helpful answer.`);

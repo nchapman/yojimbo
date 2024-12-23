@@ -111,12 +111,12 @@ export class Team extends Agent {
       lines.push(`Your backstory: ${this.backstory}`);
     }
 
-    // if (this.agents.length > 0) {
-    //   lines.push(`You can use these agents:`);
-    //   this.agents.forEach((agent) => {
-    //     lines.push(`- ${agent.name}: ${agent.description}`);
-    //   });
-    // }
+    if (this.agents.length > 0) {
+      lines.push(`You can use these agents:`);
+      this.agents.forEach((agent) => {
+        lines.push(`- ${agent.funcName}: ${agent.description}`);
+      });
+    }
 
     if (this.plan) {
       lines.push(`Follow this plan:`);

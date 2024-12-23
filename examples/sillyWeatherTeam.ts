@@ -21,12 +21,10 @@ const llm: LLMCompletion = async (
   });
 };
 
-const weatherTool = new WeatherTool();
-
 const weatherAgent = new Agent({
   role: "Weather Reporter",
   goal: "Report the weather for a given location.",
-  tools: [weatherTool],
+  tools: [new WeatherTool()],
 });
 
 const sillyWriterAgent = new Agent({

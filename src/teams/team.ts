@@ -1,6 +1,12 @@
 import { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { Agent, AgentConfig } from "../agents/agent";
 import { DefaultToolInput } from "../tools/tool";
+import {
+  buildTeamPrompt,
+  buildTeamBasePrompt,
+  buildTeamPlanPrompt,
+  teamSystemPrompt,
+} from "../prompts";
 
 export interface TeamConfig<TArgs = DefaultToolInput>
   extends Omit<AgentConfig<TArgs>, "role" | "goal"> {
@@ -29,7 +35,7 @@ export class Team<TArgs = DefaultToolInput, TReturn = string> extends Agent<
 
     // Pass tools down to agents
     this.propagateToAgents();
-    this.systemPrompt += "\nYou must follow the plan exactly.";
+    this.systemPrompt = teamSystemPrompt;
   }
 
   protected propagateToAgents() {
@@ -63,18 +69,13 @@ export class Team<TArgs = DefaultToolInput, TReturn = string> extends Agent<
 
   protected async ensurePlan(args: TArgs): Promise<void> {
     if (!this.plan) {
-      const lines = this.getBasePromptLines(args);
+      const basePrompt = this.getBasePrompt(args);
       const steps = this.agents.length + 1;
 
-      lines.push(`---`);
-      lines.push(`Your job is to write a simple plan to achieve this goal.`);
-      lines.push(
-        `Your plan can only use the agents provided. Do not suggest other tools or agents.`
-      );
-      lines.push(`You can use up to ${steps} steps to achieve your goal.`);
-      lines.push(`Respond with a simple numbered list of steps.`);
-
-      const planPrompt = lines.join("\n");
+      const planPrompt = buildTeamPlanPrompt({
+        basePrompt,
+        steps,
+      });
 
       console.log("📋 Generating plan:", planPrompt);
 
@@ -93,46 +94,23 @@ export class Team<TArgs = DefaultToolInput, TReturn = string> extends Agent<
   }
 
   protected getPrompt(args: TArgs): string {
-    const lines = this.getBasePromptLines(args);
+    const basePrompt = this.getBasePrompt(args);
 
-    lines.push(
-      this.trimBlock(`
-      Use one agent at a time.
-      Make sure you incorporate all the information from the agents into your response.
-      Don't mention the agents or the plan in your response.
-    `)
-    );
-
-    return lines.join("\n");
+    return buildTeamPrompt({
+      basePrompt,
+      plan: this.plan,
+      args: JSON.stringify(args),
+    });
   }
 
-  protected getBasePromptLines(args: TArgs): string[] {
-    const lines = [];
-
-    lines.push(`Your role: ${this.role}`);
-
-    if (this.backstory) {
-      lines.push(`Your backstory: ${this.backstory}`);
-    }
-
-    if (this.agents.length > 0) {
-      lines.push(`You can use these agents as tools:`);
-      this.agents.forEach((agent) => {
-        lines.push(`- ${agent.funcName}: ${agent.description}`);
-      });
-    }
-
-    if (this.plan) {
-      lines.push(`You must follow this plan exactly:`);
-      lines.push(this.plan);
-    }
-
-    lines.push(`Provided input: ${JSON.stringify(args)}`);
-
-    if (this.goal) {
-      lines.push(`Your goal: ${this.goal}`);
-    }
-
-    return lines;
+  protected getBasePrompt(args: TArgs): string {
+    return buildTeamBasePrompt({
+      role: this.role,
+      goal: this.goal,
+      backstory: this.backstory,
+      agents: this.agents,
+      plan: this.plan,
+      args: JSON.stringify(args),
+    });
   }
 }

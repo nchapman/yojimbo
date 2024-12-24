@@ -4,6 +4,7 @@ import {
   ChatCompletionCreateParamsNonStreaming,
 } from "openai/resources/chat/completions";
 import { Tool, DefaultToolInput, JSONSchema } from "../tools/tool";
+import { agentSystemPrompt, buildAgentPrompt } from "../prompts";
 
 export interface AgentConfig<TArgs = DefaultToolInput> {
   role: string;
@@ -39,11 +40,7 @@ export class Agent<TArgs = DefaultToolInput, TReturn = string> extends Tool<
     this.maxIter = config.maxIter ?? Math.max(this.tools.length, 5);
     this.verbose = config.verbose ?? false;
     this.funcName = this.getFuncName("Agent");
-    this.systemPrompt = this.trimBlock(`
-      You are a helpful AI agent. The user does not see any of these messages except the last one.
-      Only provide the response as requested. Do not include any intros, outros, labels, or quotes around the answer.
-      You must adhere to the provided role and goal.
-    `);
+    this.systemPrompt = agentSystemPrompt;
   }
 
   async execute(args: TArgs): Promise<TReturn> {
@@ -97,30 +94,13 @@ export class Agent<TArgs = DefaultToolInput, TReturn = string> extends Tool<
   }
 
   protected getPrompt(args: TArgs): string {
-    const lines = [];
-
-    lines.push(`Your role: ${this.role}`);
-
-    if (this.goal) {
-      lines.push(`Your goal: ${this.goal}`);
-    }
-
-    if (this.backstory) {
-      lines.push(`Your backstory: ${this.backstory}`);
-    }
-
-    if (this.tools.length > 0) {
-      lines.push(`You can use these tools:`);
-      this.tools.forEach((tool) => {
-        lines.push(`- ${tool.funcName}: ${tool.description}`);
-      });
-    }
-
-    lines.push(`Provided input: ${JSON.stringify(args)}`);
-    lines.push(`Do not mention the tools used in your response.`);
-    lines.push(`Respond as instructed.`);
-
-    return lines.join("\n");
+    return buildAgentPrompt({
+      role: this.role,
+      goal: this.goal,
+      backstory: this.backstory,
+      tools: this.tools,
+      args: JSON.stringify(args),
+    });
   }
 
   protected ensureLLM() {

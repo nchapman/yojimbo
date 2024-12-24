@@ -56,8 +56,6 @@ export class Team<TArgs = DefaultToolInput, TReturn = string> extends Agent<
     // Get or generate the plan first
     await this.ensurePlan(args);
 
-    console.log("📋 Plan:", this.plan);
-
     // Call the parent execute method with the enhanced args
     return super.execute(args);
   }
@@ -77,8 +75,6 @@ export class Team<TArgs = DefaultToolInput, TReturn = string> extends Agent<
         steps,
       });
 
-      console.log("📋 Generating plan:", planPrompt);
-
       const messages: ChatCompletionMessageParam[] = [
         { role: "system", content: this.systemPrompt },
         { role: "user", content: planPrompt },
@@ -93,8 +89,8 @@ export class Team<TArgs = DefaultToolInput, TReturn = string> extends Agent<
     return this.agents.find((agent) => agent.funcName === funcName);
   }
 
-  protected getPrompt(args: TArgs): string {
-    const basePrompt = this.getBasePrompt(args);
+  protected getPrompt(args: TArgs, includeTools = true): string {
+    const basePrompt = this.getBasePrompt(args, includeTools);
 
     return buildTeamPrompt({
       basePrompt,
@@ -102,12 +98,12 @@ export class Team<TArgs = DefaultToolInput, TReturn = string> extends Agent<
     });
   }
 
-  protected getBasePrompt(args: TArgs): string {
+  protected getBasePrompt(args: TArgs, includeTools = true): string {
     return buildTeamBasePrompt({
       role: this.role,
       goal: this.goal,
       backstory: this.backstory,
-      agents: this.agents,
+      agents: includeTools ? this.agents : undefined,
       args: JSON.stringify(args),
     });
   }

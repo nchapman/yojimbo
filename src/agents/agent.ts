@@ -45,41 +45,44 @@ export class Agent<TArgs = DefaultToolInput, TReturn = string> extends Tool<
 
   async execute(args: TArgs): Promise<TReturn> {
     this.ensureLLM();
-
-    console.log("🤖 Starting agent execution...");
-    const prompt = this.getPrompt(args);
-
-    console.log("📝 System Prompt:", this.systemPrompt);
-    console.log("💭 Prompt:", prompt);
+    const tools = this.getToolSchemas();
 
     let messages: ChatCompletionMessageParam[] = [
       { role: "system", content: this.systemPrompt },
-      { role: "user", content: prompt },
+      { role: "user", content: "" },
     ];
-    const tools = this.getToolSchemas();
-
-    console.log("🔧 Tools:", tools);
 
     let i = 0;
-    while (i < this.maxIter) {
-      console.log(`📤 Sending request to LLM (iteration ${i + 1})...`);
+    while (i <= this.maxIter) {
+      const isLastIteration = i === this.maxIter;
+      const includeTools = !isLastIteration;
 
-      const response = await this.llm!({ messages, tools });
+      // We remove the tools from the prompt on the last iteration to force a response
+      const prompt = this.getPrompt(args, includeTools);
+
+      // Update the user message with the prompt
+      messages[1].content = prompt;
+
+      const response = await this.llm!({
+        messages,
+        tools: includeTools ? tools : undefined,
+      });
+
       const message = response.choices[0]?.message;
 
-      // Return the response if no tool calls are detected
+      // Return the final response if no tool calls are detected
       if (!message?.tool_calls) {
-        console.log("✅ Agent execution completed without tool usage");
-        return (message?.content ?? "No response generated") as TReturn;
+        return (message?.content ??
+          "Sorry, no response was generated") as TReturn;
       }
 
-      const newMessages = await this.handleToolCalls(message);
+      // Otherwise, handle the tool calls and update the messages
+      const newMessages = await this.executeToolCalls(message);
       messages.push(...newMessages);
       i++;
     }
 
-    console.log("⚠️ Max iterations reached");
-    return "Max iterations reached without final response" as TReturn;
+    return "Sorry, we reached the maximum number of iterations without a response" as TReturn;
   }
 
   public getToolSchemas() {
@@ -93,12 +96,12 @@ export class Agent<TArgs = DefaultToolInput, TReturn = string> extends Tool<
     return this.tools.find((tool) => tool.funcName === funcName);
   }
 
-  protected getPrompt(args: TArgs): string {
+  protected getPrompt(args: TArgs, includeTools = true): string {
     return buildAgentPrompt({
       role: this.role,
       goal: this.goal,
       backstory: this.backstory,
-      tools: this.tools,
+      tools: includeTools ? this.tools : undefined,
       args: JSON.stringify(args),
     });
   }
@@ -109,15 +112,10 @@ export class Agent<TArgs = DefaultToolInput, TReturn = string> extends Tool<
     }
   }
 
-  private async handleToolCalls(
+  private async executeToolCalls(
     message: ChatCompletion.Choice["message"]
   ): Promise<ChatCompletionMessageParam[]> {
     const toolCalls = message.tool_calls!;
-
-    console.log(
-      "🔧 Tool calls detected:",
-      toolCalls.map((t) => `${t.function.name}(${t.function.arguments})`)
-    );
 
     const toolResults = await Promise.all(
       toolCalls.map(async (toolCall) => {
@@ -127,12 +125,8 @@ export class Agent<TArgs = DefaultToolInput, TReturn = string> extends Tool<
           throw new Error(`Tool ${toolCall.function.name} not found`);
         }
 
-        console.log(`⚙️ Executing tool: ${toolCall.function.name}`);
-
         const args = JSON.parse(toolCall.function.arguments);
         const result = await tool.execute(args);
-
-        console.log(`🔧 Tool result:`, result);
 
         return {
           result,

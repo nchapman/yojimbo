@@ -41,10 +41,6 @@ export const buildTeamBasePrompt = compileTemplate(`
     - {{funcName}}: {{description}}
     {{/each}}
   {{/if}}
-  {{#if plan}}
-    You must follow this plan exactly:
-    {{plan}}
-  {{/if}}
   Provided input: {{args}}
   {{#if goal}}
     Your goal: {{goal}}
@@ -53,6 +49,10 @@ export const buildTeamBasePrompt = compileTemplate(`
 
 export const buildTeamPrompt = compileTemplate(`
   {{basePrompt}}
+  {{#if plan}}
+    You must follow this plan exactly:
+    {{plan}}
+  {{/if}}
   Make sure you incorporate all the information from the agents (tools) into your response.
   Don't mention the agents or the plan in your response.
 `);

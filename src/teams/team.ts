@@ -99,7 +99,6 @@ export class Team<TArgs = DefaultToolInput, TReturn = string> extends Agent<
     return buildTeamPrompt({
       basePrompt,
       plan: this.plan,
-      args: JSON.stringify(args),
     });
   }
 
@@ -109,7 +108,6 @@ export class Team<TArgs = DefaultToolInput, TReturn = string> extends Agent<
       goal: this.goal,
       backstory: this.backstory,
       agents: this.agents,
-      plan: this.plan,
       args: JSON.stringify(args),
     });
   }

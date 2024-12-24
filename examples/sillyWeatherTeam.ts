@@ -36,11 +36,10 @@ const team = new Team({
 team.emitter.on("*", (event, data) => {
   const { tool, ...restData } = data;
 
-  if (event === "delta") {
-    if (data.depth === 0) {
-      console.log(`${event}:`, restData);
-    }
+  if (event === "delta" && "content" in data) {
+    process.stdout.write(data.content);
   } else {
+    process.stdout.write("\n");
     console.log(`${event}:`, restData);
   }
 });

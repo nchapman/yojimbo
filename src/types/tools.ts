@@ -18,6 +18,9 @@ export type ToolEvents = {
   delta: BaseToolEvent & {
     content: string;
   };
+  data: BaseToolEvent & {
+    data: any;
+  };
 };
 
 export interface DefaultToolInput {

@@ -25,6 +25,8 @@ export class WeatherTool extends Tool<DefaultToolInput, string> {
       windSpeed: Math.floor(Math.random() * 20) + 5, // Random wind 5-25 km/h
     };
 
+    this.emit("data", { data: weatherData });
+
     return JSON.stringify(weatherData, null, 2);
   }
 }

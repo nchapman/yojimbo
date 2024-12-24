@@ -36,8 +36,9 @@ const team = new Team({
   llm,
 });
 
-team.emitter.on("status", (status) => {
-  console.log(status);
+team.emitter.on("*", (event, data) => {
+  const { tool, ...restData } = data;
+  console.log(`${event}:`, restData);
 });
 
 const response = await team.execute({

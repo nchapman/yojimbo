@@ -40,16 +40,17 @@ export class Team<TArgs = DefaultToolInput, TReturn = string> extends Agent<
   }
 
   public propagate(): void {
-    console.log("Propagate from Team:", this.role);
-
     this.agents.forEach((agent) => {
+      // Set parent tool
+      agent.parentTool = this;
+
       // Merge tools and make sure there are no duplicates
       agent.tools = Array.from(new Set([...this.tools, ...agent.tools]));
 
-      // Propagate emitter
+      // Set emitter
       agent.emitter = this.emitter;
 
-      // Propagate LLM if not already set
+      // Set LLM if not already set
       if (!agent.llm) {
         agent.llm = this.llm;
       }

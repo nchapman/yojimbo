@@ -49,8 +49,8 @@ export class Agent<TArgs = DefaultToolInput, TReturn = string> extends Tool<
   }
 
   public propagate(): void {
-    console.log("Propagate from Agent:", this.role);
     this.tools.forEach((tool: Tool) => {
+      tool.parentTool = this;
       tool.emitter = this.emitter;
     });
   }

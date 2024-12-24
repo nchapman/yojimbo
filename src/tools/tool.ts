@@ -34,7 +34,14 @@ const DEFAULT_PARAMETERS: JSONSchema<DefaultToolInput> = {
 };
 
 type ToolEvents = {
-  status: string;
+  start: { id: string; depth: number; tool: Tool<any, any>; message: string };
+  complete: {
+    id: string;
+    depth: number;
+    tool: Tool<any, any>;
+    message: string;
+    error?: Error;
+  };
 };
 
 export abstract class Tool<TArgs = DefaultToolInput, TReturn = string> {
@@ -43,18 +50,21 @@ export abstract class Tool<TArgs = DefaultToolInput, TReturn = string> {
   description: string;
   parameters: JSONSchema<TArgs>;
   emitter: Emitter<ToolEvents>;
+  parentTool?: Tool<any, any>;
 
   constructor(
     name: string,
     description: string,
     parameters: JSONSchema<TArgs> = DEFAULT_PARAMETERS as JSONSchema<TArgs>,
-    emitter?: Emitter<ToolEvents>
+    emitter?: Emitter<ToolEvents>,
+    parentTool?: Tool<any, any>
   ) {
     this.name = name;
     this.description = description;
     this.parameters = parameters;
     this.funcName = this.getFuncName("Tool");
     this.emitter = emitter || mitt();
+    this.parentTool = parentTool;
   }
 
   public toSchema(): ChatCompletionTool {
@@ -74,15 +84,32 @@ export abstract class Tool<TArgs = DefaultToolInput, TReturn = string> {
 
   public async execute(args: TArgs): Promise<TReturn> {
     try {
-      this.emitter.emit("status", `Starting ${this.name}`);
+      this.emitter.emit("start", {
+        id: this.getId(),
+        depth: this.getDepth(),
+        tool: this,
+        message: `Starting ${this.name}`,
+      });
 
       const result = await this.run(args);
 
-      this.emitter.emit("status", `Completed ${this.name}`);
+      this.emitter.emit("complete", {
+        id: this.getId(),
+        depth: this.getDepth(),
+        tool: this,
+        message: `Successfully completed ${this.name}`,
+      });
+
       return result;
-    } catch (e: any) {
-      this.emitter.emit("status", `Failed ${this.name}: ${e.message}`);
-      throw e;
+    } catch (error: any) {
+      this.emitter.emit("complete", {
+        id: this.getId(),
+        depth: this.getDepth(),
+        tool: this,
+        message: `Failed to complete ${this.name}`,
+        error,
+      });
+      throw error;
     }
   }
 
@@ -97,5 +124,17 @@ export abstract class Tool<TArgs = DefaultToolInput, TReturn = string> {
     }
 
     return funcName;
+  }
+
+  protected getId(): string {
+    const id = this.parentTool
+      ? `${this.parentTool.getId()}-${this.name}`
+      : this.name;
+
+    return id.replace(/\s+/g, "");
+  }
+
+  protected getDepth(): number {
+    return this.parentTool ? this.parentTool.getDepth() + 1 : 0;
   }
 }

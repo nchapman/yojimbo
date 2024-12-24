@@ -21,6 +21,9 @@ export type ToolEvents = {
   data: BaseToolEvent & {
     data: any;
   };
+  warn: BaseToolEvent & {
+    message: string;
+  };
 };
 
 export interface DefaultToolInput {

@@ -67,7 +67,8 @@ export class Agent<TArgs = DefaultToolInput, TReturn = string> extends Tool<
       // Create a new response to accumulate the streaming content
       let accumulatedContent = "";
       let toolCalls: ChatCompletion.Choice["message"]["tool_calls"] = [];
-      let refusal: string | null = null;
+      let refusal: string | undefined = undefined;
+      let finishReason: string | null = null;
 
       const stream = (await this.llm!({
         messages,
@@ -75,24 +76,29 @@ export class Agent<TArgs = DefaultToolInput, TReturn = string> extends Tool<
         stream: true,
       })) as Stream<ChatCompletionChunk>;
 
-      // Process the stream
+      // Process each chunk of the stream
       for await (const chunk of stream) {
         const delta = chunk.choices[0]?.delta;
 
-        // Accumulate content if present
-        if (delta?.content) {
-          accumulatedContent += delta.content;
-          // Emit the partial content for real-time updates
-          this.emit("delta", { content: delta.content });
-        }
+        // Skip if no delta
+        if (!delta) continue;
+
+        // Track finish reason
+        finishReason = chunk.choices[0].finish_reason;
 
         // Track refusal if present
-        if (delta?.refusal !== undefined) {
+        if (delta.refusal) {
           refusal = delta.refusal;
         }
 
-        // Handle tool calls - they usually come at the end
-        if (delta?.tool_calls) {
+        // Accumulate content if present
+        if (delta.content) {
+          accumulatedContent += delta.content;
+          this.emit("delta", { content: delta.content });
+        }
+
+        // Handle tool calls
+        if (delta.tool_calls) {
           for (const toolCall of delta.tool_calls) {
             // Initialize tool call if it's new
             if (toolCall.index !== undefined) {
@@ -107,14 +113,27 @@ export class Agent<TArgs = DefaultToolInput, TReturn = string> extends Tool<
               if (toolCall.function?.name) {
                 toolCalls[toolCall.index].function.name =
                   toolCall.function.name;
+                // Optional: this.emit("tool_call", { name: toolCall.function.name });
               }
               if (toolCall.function?.arguments) {
                 toolCalls[toolCall.index].function.arguments +=
                   toolCall.function.arguments;
+                // Optional: this.emit("tool_args", {
+                //   name: toolCalls[toolCall.index].function.name,
+                //   args: toolCall.function.arguments,
+                // });
               }
             }
           }
         }
+      }
+
+      // Warn about unexpected finish reasons
+      const validFinishReasons = ["stop", "tool_calls", "function_call"];
+      if (!validFinishReasons.includes(finishReason ?? "")) {
+        this.emit("warn", {
+          message: `Unexpected finish reason: ${finishReason}`,
+        });
       }
 
       // Create a synthetic message that looks like a non-streaming response
@@ -122,7 +141,7 @@ export class Agent<TArgs = DefaultToolInput, TReturn = string> extends Tool<
         role: "assistant",
         content: accumulatedContent,
         tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
-        refusal: refusal,
+        refusal: refusal ?? null,
       };
 
       // Return the final response if no tool calls are detected

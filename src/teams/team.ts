@@ -28,28 +28,34 @@ export class Team<TArgs = DefaultToolInput, TReturn = string> extends Agent<
       ...config,
       role: config.role ?? "Agent Manager",
       goal: config.goal ?? "Use the provided agents to respond to the input",
+      skipPropagation: true,
     });
 
     this.agents = config.agents;
     this.plan = config.plan ?? null;
 
-    // Pass tools down to agents
-    this.propagateToAgents();
     this.systemPrompt = teamSystemPrompt;
+
+    this.propagate();
   }
 
-  protected propagateToAgents() {
+  public propagate(): void {
+    console.log("Propagate from Team:", this.role);
+
     this.agents.forEach((agent) => {
-      // Set tools to the union of the team's tools and the agent's tools
+      // Merge tools and make sure there are no duplicates
       agent.tools = Array.from(new Set([...this.tools, ...agent.tools]));
 
-      // Set emitter to the team's emitter
+      // Propagate emitter
       agent.emitter = this.emitter;
 
-      // Set llm if it's not set
+      // Propagate LLM if not already set
       if (!agent.llm) {
         agent.llm = this.llm;
       }
+
+      // Continue propagation
+      agent.propagate();
     });
   }
 

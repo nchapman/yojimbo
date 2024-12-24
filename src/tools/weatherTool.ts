@@ -1,6 +1,6 @@
 import { Tool, DefaultToolInput } from "./tool";
 
-export class WeatherTool extends Tool<DefaultToolInput> {
+export class WeatherTool extends Tool<DefaultToolInput, string> {
   constructor() {
     super("Weather Tool", "Get weather information for a location", {
       properties: {
@@ -13,7 +13,7 @@ export class WeatherTool extends Tool<DefaultToolInput> {
     });
   }
 
-  async execute(args: DefaultToolInput): Promise<string> {
+  protected async run(args: DefaultToolInput): Promise<string> {
     const weatherData = {
       location: args.input,
       temperature: Math.floor(Math.random() * 30) + 10, // Random temp between 10-40°C

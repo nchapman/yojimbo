@@ -15,6 +15,7 @@ export interface AgentConfig<TArgs = DefaultToolInput> {
   tools?: Tool[] | null;
   maxIter?: number | null;
   verbose?: boolean | null;
+  skipPropagation?: boolean;
 }
 
 export class Agent<TArgs = DefaultToolInput, TReturn = string> extends Tool<
@@ -42,11 +43,14 @@ export class Agent<TArgs = DefaultToolInput, TReturn = string> extends Tool<
     this.funcName = this.getFuncName("Agent");
     this.systemPrompt = agentSystemPrompt;
 
-    this.propagateToTools();
+    if (!config.skipPropagation) {
+      this.propagate();
+    }
   }
 
-  protected propagateToTools() {
-    this.tools.forEach((tool) => {
+  public propagate(): void {
+    console.log("Propagate from Agent:", this.role);
+    this.tools.forEach((tool: Tool) => {
       tool.emitter = this.emitter;
     });
   }

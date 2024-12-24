@@ -41,9 +41,17 @@ export class Agent<TArgs = DefaultToolInput, TReturn = string> extends Tool<
     this.verbose = config.verbose ?? false;
     this.funcName = this.getFuncName("Agent");
     this.systemPrompt = agentSystemPrompt;
+
+    this.propagateToTools();
   }
 
-  async execute(args: TArgs): Promise<TReturn> {
+  protected propagateToTools() {
+    this.tools.forEach((tool) => {
+      tool.emitter = this.emitter;
+    });
+  }
+
+  protected async run(args: TArgs): Promise<TReturn> {
     this.ensureLLM();
     const tools = this.getToolSchemas();
 

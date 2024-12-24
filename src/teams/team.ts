@@ -43,6 +43,9 @@ export class Team<TArgs = DefaultToolInput, TReturn = string> extends Agent<
       // Set tools to the union of the team's tools and the agent's tools
       agent.tools = Array.from(new Set([...this.tools, ...agent.tools]));
 
+      // Set emitter to the team's emitter
+      agent.emitter = this.emitter;
+
       // Set llm if it's not set
       if (!agent.llm) {
         agent.llm = this.llm;
@@ -50,14 +53,14 @@ export class Team<TArgs = DefaultToolInput, TReturn = string> extends Agent<
     });
   }
 
-  public async execute(args: TArgs): Promise<TReturn> {
+  protected async run(args: TArgs): Promise<TReturn> {
     this.ensureLLM();
 
     // Get or generate the plan first
     await this.ensurePlan(args);
 
     // Call the parent execute method with the enhanced args
-    return super.execute(args);
+    return super.run(args);
   }
 
   // Tools in this context are agents

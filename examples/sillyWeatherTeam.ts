@@ -36,6 +36,10 @@ const team = new Team({
   llm,
 });
 
+team.emitter.on("status", (status) => {
+  console.log(status);
+});
+
 const response = await team.execute({
   input: "Write me a funny story about the current weather in Tokyo.",
 });

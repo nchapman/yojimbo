@@ -1,4 +1,5 @@
 import { ChatCompletionTool } from "openai/resources/chat/completions";
+import mitt, { Emitter } from "mitt";
 
 export type JSONSchemaType =
   | "string"
@@ -32,21 +33,28 @@ const DEFAULT_PARAMETERS: JSONSchema<DefaultToolInput> = {
   required: ["input"],
 };
 
+type ToolEvents = {
+  status: string;
+};
+
 export abstract class Tool<TArgs = DefaultToolInput, TReturn = string> {
   funcName: string;
   name: string;
   description: string;
   parameters: JSONSchema<TArgs>;
+  public emitter: Emitter<ToolEvents>;
 
   constructor(
     name: string,
     description: string,
-    parameters: JSONSchema<TArgs> = DEFAULT_PARAMETERS as JSONSchema<TArgs>
+    parameters: JSONSchema<TArgs> = DEFAULT_PARAMETERS as JSONSchema<TArgs>,
+    emitter?: Emitter<ToolEvents>
   ) {
     this.name = name;
     this.description = description;
     this.parameters = parameters;
     this.funcName = this.getFuncName("Tool");
+    this.emitter = emitter || mitt();
   }
 
   public toSchema(): ChatCompletionTool {
@@ -64,7 +72,21 @@ export abstract class Tool<TArgs = DefaultToolInput, TReturn = string> {
     };
   }
 
-  abstract execute(args: TArgs): Promise<TReturn>;
+  public async execute(args: TArgs): Promise<TReturn> {
+    try {
+      this.emitter.emit("status", `Starting ${this.name}`);
+
+      const result = await this.run(args);
+
+      this.emitter.emit("status", `Completed ${this.name}`);
+      return result;
+    } catch (e: any) {
+      this.emitter.emit("status", `Failed ${this.name}: ${e.message}`);
+      throw e;
+    }
+  }
+
+  protected abstract run(args: TArgs): Promise<TReturn>;
 
   protected getFuncName(type: string) {
     let funcName = this.name.replace(/\s+/g, "");

@@ -1,8 +1,10 @@
 import {
   ChatCompletion,
   ChatCompletionMessageParam,
-  ChatCompletionCreateParamsNonStreaming,
+  ChatCompletionCreateParams,
+  ChatCompletionChunk,
 } from "openai/resources/chat/completions";
+import { Stream } from "openai/streaming";
 import { Tool, DefaultToolInput, JSONSchema } from "../tools/tool";
 import { agentSystemPrompt, buildAgentPrompt } from "../prompts";
 
@@ -69,27 +71,78 @@ export class Agent<TArgs = DefaultToolInput, TReturn = string> extends Tool<
       const isLastIteration = i === this.maxIter;
       const includeTools = !isLastIteration;
 
-      // We remove the tools from the prompt on the last iteration to force a response
       const prompt = this.getPrompt(args, includeTools);
-
-      // Update the user message with the prompt
       messages[1].content = prompt;
 
-      const response = await this.llm!({
+      // Create a new response to accumulate the streaming content
+      let accumulatedContent = "";
+      let toolCalls: ChatCompletion.Choice["message"]["tool_calls"] = [];
+      let refusal: string | null = null;
+
+      const stream = (await this.llm!({
         messages,
         tools: includeTools ? tools : undefined,
-      });
+        stream: true,
+      })) as Stream<ChatCompletionChunk>;
 
-      const message = response.choices[0]?.message;
+      // Process the stream
+      for await (const chunk of stream) {
+        const delta = chunk.choices[0]?.delta;
+
+        // Accumulate content if present
+        if (delta?.content) {
+          accumulatedContent += delta.content;
+          // Emit the partial content for real-time updates
+          this.emit("delta", { content: delta.content });
+        }
+
+        // Track refusal if present
+        if (delta?.refusal !== undefined) {
+          refusal = delta.refusal;
+        }
+
+        // Handle tool calls - they usually come at the end
+        if (delta?.tool_calls) {
+          for (const toolCall of delta.tool_calls) {
+            // Initialize tool call if it's new
+            if (toolCall.index !== undefined) {
+              toolCalls[toolCall.index] = toolCalls[toolCall.index] || {
+                id: toolCall.id || "",
+                type: "function",
+                function: { name: "", arguments: "" },
+              };
+
+              // Update the tool call properties
+              if (toolCall.id) toolCalls[toolCall.index].id = toolCall.id;
+              if (toolCall.function?.name) {
+                toolCalls[toolCall.index].function.name =
+                  toolCall.function.name;
+              }
+              if (toolCall.function?.arguments) {
+                toolCalls[toolCall.index].function.arguments +=
+                  toolCall.function.arguments;
+              }
+            }
+          }
+        }
+      }
+
+      // Create a synthetic message that looks like a non-streaming response
+      const syntheticMessage: ChatCompletion.Choice["message"] = {
+        role: "assistant",
+        content: accumulatedContent,
+        tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
+        refusal: refusal,
+      };
 
       // Return the final response if no tool calls are detected
-      if (!message?.tool_calls) {
-        return (message?.content ??
+      if (!syntheticMessage.tool_calls) {
+        return (syntheticMessage.content ??
           "Sorry, no response was generated") as TReturn;
       }
 
-      // Otherwise, handle the tool calls and update the messages
-      const newMessages = await this.executeToolCalls(message);
+      // Handle tool calls as before
+      const newMessages = await this.executeToolCalls(syntheticMessage);
       messages.push(...newMessages);
       i++;
     }
@@ -183,5 +236,5 @@ export class Agent<TArgs = DefaultToolInput, TReturn = string> extends Tool<
 }
 
 export type LLMCompletion = (
-  params: Partial<ChatCompletionCreateParamsNonStreaming>
-) => Promise<ChatCompletion>;
+  params: Omit<ChatCompletionCreateParams, "model">
+) => Promise<ChatCompletion | Stream<ChatCompletionChunk>>;

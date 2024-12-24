@@ -34,14 +34,24 @@ const DEFAULT_PARAMETERS: JSONSchema<DefaultToolInput> = {
   required: ["input"],
 };
 
+// Base event type with common fields
+type BaseToolEvent = {
+  id: string;
+  depth: number;
+  tool: Tool<any, any>;
+};
+
+// Updated ToolEvents with proper inheritance
 type ToolEvents = {
-  start: { id: string; depth: number; tool: Tool<any, any>; message: string };
-  complete: {
-    id: string;
-    depth: number;
-    tool: Tool<any, any>;
+  start: BaseToolEvent & {
+    message: string;
+  };
+  complete: BaseToolEvent & {
     message: string;
     error?: Error;
+  };
+  delta: BaseToolEvent & {
+    content: string;
   };
 };
 
@@ -87,28 +97,19 @@ export abstract class Tool<TArgs = DefaultToolInput, TReturn = string> {
 
   public async execute(args: TArgs): Promise<TReturn> {
     try {
-      this.emitter.emit("start", {
-        id: this.getGraphId(),
-        depth: this.getDepth(),
-        tool: this,
+      this.emit("start", {
         message: `Starting ${this.name}`,
       });
 
       const result = await this.run(args);
 
-      this.emitter.emit("complete", {
-        id: this.getGraphId(),
-        depth: this.getDepth(),
-        tool: this,
+      this.emit("complete", {
         message: `Successfully completed ${this.name}`,
       });
 
       return result;
     } catch (error: any) {
-      this.emitter.emit("complete", {
-        id: this.getGraphId(),
-        depth: this.getDepth(),
-        tool: this,
+      this.emit("complete", {
         message: `Failed to complete ${this.name}`,
         error,
       });
@@ -140,5 +141,21 @@ export abstract class Tool<TArgs = DefaultToolInput, TReturn = string> {
 
   protected getDepth(): number {
     return this.parentTool ? this.parentTool.getDepth() + 1 : 0;
+  }
+
+  protected emit(
+    event: keyof ToolEvents,
+    data: Omit<ToolEvents[keyof ToolEvents], keyof BaseToolEvent>
+  ) {
+    if (!this.emitter) return;
+
+    const allData = {
+      id: this.getGraphId(),
+      depth: this.getDepth(),
+      tool: this,
+      ...data,
+    } as unknown as ToolEvents[keyof ToolEvents];
+
+    this.emitter.emit(event, allData);
   }
 }

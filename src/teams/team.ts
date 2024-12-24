@@ -1,4 +1,7 @@
-import { ChatCompletionMessageParam } from "openai/resources/chat/completions";
+import {
+  ChatCompletion,
+  ChatCompletionMessageParam,
+} from "openai/resources/chat/completions";
 import { Agent, AgentConfig } from "../agents/agent";
 import { DefaultToolInput } from "../tools/tool";
 import {
@@ -90,7 +93,7 @@ export class Team<TArgs = DefaultToolInput, TReturn = string> extends Agent<
         { role: "user", content: planPrompt },
       ];
 
-      const response = await this.llm!({ messages });
+      const response = (await this.llm!({ messages })) as ChatCompletion;
       this.plan = response.choices[0]?.message?.content ?? "No plan generated.";
     }
   }

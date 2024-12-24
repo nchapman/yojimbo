@@ -2,7 +2,6 @@ import { OpenAI } from "openai";
 import { Agent, LLMCompletion } from "../src/agents/agent";
 import { Team } from "../src/teams/team";
 import { WeatherTool } from "../src/tools/weatherTool";
-import { ChatCompletionCreateParamsNonStreaming } from "openai/resources/chat/completions";
 
 // At the top of the file, after imports
 const openai = new OpenAI({
@@ -10,12 +9,9 @@ const openai = new OpenAI({
 });
 
 // Create the LLM completion function
-const llm: LLMCompletion = async (
-  args: Partial<ChatCompletionCreateParamsNonStreaming>
-) => {
+const llm: LLMCompletion = async (args) => {
   return openai.chat.completions.create({
     model: "gpt-4o-mini",
-    messages: args.messages ?? [],
     ...args,
   });
 };
@@ -38,7 +34,14 @@ const team = new Team({
 
 team.emitter.on("*", (event, data) => {
   const { tool, ...restData } = data;
-  console.log(`${event}:`, restData);
+
+  if (event === "delta") {
+    if (data.depth === 0) {
+      console.log(`${event}:`, restData);
+    }
+  } else {
+    console.log(`${event}:`, restData);
+  }
 });
 
 const response = await team.execute({

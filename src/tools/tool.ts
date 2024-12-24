@@ -1,28 +1,8 @@
-import { ChatCompletionTool } from "openai/resources/chat/completions";
+import { ChatCompletionTool } from "../types/openai";
 import mitt, { Emitter } from "mitt";
 import { ulid } from "ulid";
-
-export type JSONSchemaType =
-  | "string"
-  | "number"
-  | "boolean"
-  | "object"
-  | "array";
-
-export type JSONSchema<T> = {
-  properties: {
-    [K in keyof T]: {
-      type: JSONSchemaType;
-      description: string;
-    };
-  };
-  required?: (keyof T)[];
-};
-
-// Default input type with a generic input string
-export interface DefaultToolInput {
-  input: string;
-}
+import { JSONSchema } from "../types/schema";
+import { BaseToolEvent, ToolEvents, DefaultToolInput } from "../types/tools";
 
 const DEFAULT_PARAMETERS: JSONSchema<DefaultToolInput> = {
   properties: {
@@ -32,27 +12,6 @@ const DEFAULT_PARAMETERS: JSONSchema<DefaultToolInput> = {
     },
   },
   required: ["input"],
-};
-
-// Base event type with common fields
-type BaseToolEvent = {
-  id: string;
-  depth: number;
-  tool: Tool<any, any>;
-};
-
-// Updated ToolEvents with proper inheritance
-type ToolEvents = {
-  start: BaseToolEvent & {
-    message: string;
-  };
-  complete: BaseToolEvent & {
-    message: string;
-    error?: Error;
-  };
-  delta: BaseToolEvent & {
-    content: string;
-  };
 };
 
 export abstract class Tool<TArgs = DefaultToolInput, TReturn = string> {

@@ -1,5 +1,6 @@
 import { OpenAI } from "openai";
-import { Agent, LLMCompletion } from "../src/agents/agent";
+import { Agent } from "../src/agents/agent";
+import { LLMCompletion } from "../src/types/openai";
 import { Team } from "../src/teams/team";
 import { WeatherTool } from "../src/tools/weatherTool";
 

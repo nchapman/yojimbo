@@ -2,22 +2,15 @@ import {
   ChatCompletion,
   ChatCompletionMessageParam,
 } from "openai/resources/chat/completions";
-import { Agent, AgentConfig } from "../agents/agent";
-import { DefaultToolInput } from "../tools/tool";
+import { Agent } from "../agents/agent";
+import { DefaultToolInput } from "../types/tools";
+import { TeamConfig } from "../types/team";
 import {
   buildTeamPrompt,
   buildTeamBasePrompt,
   buildTeamPlanPrompt,
   teamSystemPrompt,
 } from "../prompts";
-
-export interface TeamConfig<TArgs = DefaultToolInput>
-  extends Omit<AgentConfig<TArgs>, "role" | "goal"> {
-  role?: string;
-  goal?: string;
-  plan?: string;
-  agents: Agent[];
-}
 
 export class Team<TArgs = DefaultToolInput, TReturn = string> extends Agent<
   TArgs,

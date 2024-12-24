@@ -1,4 +1,5 @@
-import { Tool, DefaultToolInput } from "./tool";
+import { Tool } from "./tool";
+import { DefaultToolInput } from "../types/tools";
 
 export class WeatherTool extends Tool<DefaultToolInput, string> {
   constructor() {

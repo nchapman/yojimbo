@@ -1,24 +1,14 @@
 import {
   ChatCompletion,
   ChatCompletionMessageParam,
-  ChatCompletionCreateParams,
   ChatCompletionChunk,
-} from "openai/resources/chat/completions";
-import { Stream } from "openai/streaming";
-import { Tool, DefaultToolInput, JSONSchema } from "../tools/tool";
+  Stream,
+  LLMCompletion,
+} from "../types/openai";
+import { Tool } from "../tools/tool";
+import { DefaultToolInput } from "../types/tools";
+import { AgentConfig } from "../types/agent";
 import { agentSystemPrompt, buildAgentPrompt } from "../prompts";
-
-export interface AgentConfig<TArgs = DefaultToolInput> {
-  role: string;
-  goal?: string | null;
-  backstory?: string | null;
-  parameters?: JSONSchema<TArgs>;
-  llm?: LLMCompletion;
-  tools?: Tool[] | null;
-  maxIter?: number | null;
-  verbose?: boolean | null;
-  skipPropagation?: boolean;
-}
 
 export class Agent<TArgs = DefaultToolInput, TReturn = string> extends Tool<
   TArgs,
@@ -234,7 +224,3 @@ export class Agent<TArgs = DefaultToolInput, TReturn = string> extends Tool<
     ];
   }
 }
-
-export type LLMCompletion = (
-  params: Omit<ChatCompletionCreateParams, "model">
-) => Promise<ChatCompletion | Stream<ChatCompletionChunk>>;

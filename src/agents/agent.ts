@@ -216,6 +216,7 @@ export class Agent<TArgs = DefaultToolInput, TReturn = string> extends Tool<
         }
 
         try {
+          // Execute will throw if the arguments are invalid
           const result = await tool.execute(args);
           return { result, toolCall };
         } catch (e: any) {

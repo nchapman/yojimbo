@@ -3,6 +3,7 @@ import mitt, { Emitter } from "mitt";
 import { ulid } from "ulid";
 import { JSONSchema } from "../types/schema";
 import { BaseToolEvent, ToolEvents, DefaultToolInput } from "../types/tools";
+import Ajv from "ajv";
 
 const DEFAULT_PARAMETERS: JSONSchema<DefaultToolInput> = {
   properties: {
@@ -56,6 +57,9 @@ export abstract class Tool<TArgs = DefaultToolInput, TReturn = string> {
 
   public async execute(args: TArgs): Promise<TReturn> {
     try {
+      // Make sure the arguments are valid
+      this.validateArgsOrThrow(args);
+
       this.emit("start", {
         message: `Starting ${this.name}`,
       });
@@ -116,5 +120,15 @@ export abstract class Tool<TArgs = DefaultToolInput, TReturn = string> {
     } as unknown as ToolEvents[keyof ToolEvents];
 
     this.emitter.emit(event, allData);
+  }
+
+  protected validateArgsOrThrow(args: TArgs) {
+    const ajv = new Ajv({ strict: false });
+    const validator = ajv.compile(this.parameters);
+    const isValid = validator(args);
+
+    if (!isValid) {
+      throw new Error(`Invalid arguments: ${ajv.errorsText(validator.errors)}`);
+    }
   }
 }

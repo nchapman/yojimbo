@@ -1,5 +1,6 @@
 import { ChatCompletionTool } from "openai/resources/chat/completions";
 import mitt, { Emitter } from "mitt";
+import { ulid } from "ulid";
 
 export type JSONSchemaType =
   | "string"
@@ -45,6 +46,7 @@ type ToolEvents = {
 };
 
 export abstract class Tool<TArgs = DefaultToolInput, TReturn = string> {
+  id: string;
   funcName: string;
   name: string;
   description: string;
@@ -59,6 +61,7 @@ export abstract class Tool<TArgs = DefaultToolInput, TReturn = string> {
     emitter?: Emitter<ToolEvents>,
     parentTool?: Tool<any, any>
   ) {
+    this.id = ulid();
     this.name = name;
     this.description = description;
     this.parameters = parameters;
@@ -85,7 +88,7 @@ export abstract class Tool<TArgs = DefaultToolInput, TReturn = string> {
   public async execute(args: TArgs): Promise<TReturn> {
     try {
       this.emitter.emit("start", {
-        id: this.getId(),
+        id: this.getGraphId(),
         depth: this.getDepth(),
         tool: this,
         message: `Starting ${this.name}`,
@@ -94,7 +97,7 @@ export abstract class Tool<TArgs = DefaultToolInput, TReturn = string> {
       const result = await this.run(args);
 
       this.emitter.emit("complete", {
-        id: this.getId(),
+        id: this.getGraphId(),
         depth: this.getDepth(),
         tool: this,
         message: `Successfully completed ${this.name}`,
@@ -103,7 +106,7 @@ export abstract class Tool<TArgs = DefaultToolInput, TReturn = string> {
       return result;
     } catch (error: any) {
       this.emitter.emit("complete", {
-        id: this.getId(),
+        id: this.getGraphId(),
         depth: this.getDepth(),
         tool: this,
         message: `Failed to complete ${this.name}`,
@@ -126,12 +129,13 @@ export abstract class Tool<TArgs = DefaultToolInput, TReturn = string> {
     return funcName;
   }
 
-  protected getId(): string {
-    const id = this.parentTool
-      ? `${this.parentTool.getId()}-${this.name}`
-      : this.name;
+  protected getGraphId(): string {
+    const nameWithId = `${this.name}:${this.id}`.replace(/\s+/g, "");
+    const graphId = this.parentTool
+      ? `${this.parentTool.getGraphId()}->${nameWithId}`
+      : nameWithId;
 
-    return id.replace(/\s+/g, "");
+    return graphId;
   }
 
   protected getDepth(): number {

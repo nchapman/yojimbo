@@ -14,7 +14,7 @@ export const buildAgentPrompt = compileTemplate(`
   {{#if backstory}}
     Your backstory: {{backstory}}
   {{/if}}
-  {{#if tools}}
+  {{#if tools.length}}
     You can use these tools:
     {{#each tools}}
     - {{funcName}}: {{description}}
@@ -36,7 +36,7 @@ export const buildTeamBasePrompt = compileTemplate(`
     Your backstory: {{backstory}}
   {{/if}}
   {{#if agents.length}}
-    You can use these agents as tools:
+    You can use these agents (tools):
     {{#each agents}}
     - {{funcName}}: {{description}}
     {{/each}}
@@ -53,8 +53,7 @@ export const buildTeamBasePrompt = compileTemplate(`
 
 export const buildTeamPrompt = compileTemplate(`
   {{basePrompt}}
-  Use one agent at a time.
-  Make sure you incorporate all the information from the agents into your response.
+  Make sure you incorporate all the information from the agents (tools) into your response.
   Don't mention the agents or the plan in your response.
 `);
 
@@ -64,5 +63,5 @@ export const buildTeamPlanPrompt = compileTemplate(`
   Your job is to write a simple plan to achieve this goal.
   Your plan can only use the agents provided. Do not suggest other tools or agents.
   You can use up to {{steps}} steps to achieve your goal.
-  Respond with a simple numbered list of steps.
+  Respond with just a numbered list of steps.
 `);

@@ -1,4 +1,3 @@
-import "dotenv/config";
 import { OpenAI } from "openai";
 import { Agent, LLMCompletion } from "../src/agents/agent";
 import { Team } from "../src/teams/team";

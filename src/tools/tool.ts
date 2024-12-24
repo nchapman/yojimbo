@@ -1,3 +1,5 @@
+import { ChatCompletionTool } from "openai/resources/chat/completions";
+
 export type JSONSchemaType =
   | "string"
   | "number"
@@ -13,16 +15,6 @@ export type JSONSchema<T> = {
     };
   };
   required?: (keyof T)[];
-};
-
-export type ChatCompletionTool<T = any> = {
-  name: string;
-  description: string;
-  parameters: {
-    type: "object";
-    properties: JSONSchema<T>["properties"];
-    required?: JSONSchema<T>["required"];
-  };
 };
 
 // Default input type with a generic input string
@@ -74,7 +66,7 @@ export abstract class Tool<TArgs = DefaultToolInput, TReturn = string> {
 
   abstract execute(args: TArgs): Promise<TReturn>;
 
-  protected getFuncName(type: "Agent" | "Tool") {
+  protected getFuncName(type: string) {
     let funcName = this.name.replace(/\s+/g, "");
 
     // Append Agent if it's not already in the name

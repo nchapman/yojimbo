@@ -1,30 +1,29 @@
 import { ChatCompletionMessageParam } from "openai/resources/chat/completions";
-import { Agent, LLMCompletion } from "../agents/agent";
-import { DefaultToolInput, Tool, JSONSchema } from "../tools/tool";
+import { Agent, AgentConfig } from "../agents/agent";
+import { DefaultToolInput } from "../tools/tool";
 
-export interface TeamConfig {
+export interface TeamConfig<TArgs = DefaultToolInput>
+  extends Omit<AgentConfig<TArgs>, "role" | "goal"> {
   role?: string;
-  goal?: string | null;
-  backstory?: string;
+  goal?: string;
   plan?: string;
-  parameters?: JSONSchema<DefaultToolInput>;
-  llm: LLMCompletion;
   agents: Agent[];
-  tools?: Tool[] | null;
-  maxIter?: number | null;
-  verbose?: boolean | null;
 }
 
-export class Team extends Agent {
+export class Team<TArgs = DefaultToolInput, TReturn = string> extends Agent<
+  TArgs,
+  TReturn
+> {
   private agents: Agent[];
   private plan: string | null;
 
-  constructor(config: TeamConfig) {
+  constructor(config: TeamConfig<TArgs>) {
     super({
       ...config,
       role: config.role ?? "Agent Manager",
       goal: config.goal ?? "Use the provided agents to respond to the input",
     });
+
     this.agents = config.agents;
     this.plan = config.plan ?? null;
 
@@ -45,7 +44,9 @@ export class Team extends Agent {
     });
   }
 
-  public async execute(args: DefaultToolInput) {
+  public async execute(args: TArgs): Promise<TReturn> {
+    this.ensureLLM();
+
     // Get or generate the plan first
     await this.ensurePlan(args);
 
@@ -60,7 +61,7 @@ export class Team extends Agent {
     return this.agents.map((agent) => agent.toSchema());
   }
 
-  protected async ensurePlan(args: DefaultToolInput): Promise<void> {
+  protected async ensurePlan(args: TArgs): Promise<void> {
     if (!this.plan) {
       const lines = this.getBasePromptLines(args);
       const steps = this.agents.length + 1;
@@ -82,7 +83,7 @@ export class Team extends Agent {
         { role: "user", content: planPrompt },
       ];
 
-      const response = await this.llm({ messages });
+      const response = await this.llm!({ messages });
       this.plan = response.choices[0]?.message?.content ?? "No plan generated.";
     }
   }
@@ -91,7 +92,7 @@ export class Team extends Agent {
     return this.agents.find((agent) => agent.funcName === funcName);
   }
 
-  protected getPrompt(args: DefaultToolInput): string {
+  protected getPrompt(args: TArgs): string {
     const lines = this.getBasePromptLines(args);
 
     lines.push(
@@ -105,7 +106,7 @@ export class Team extends Agent {
     return lines.join("\n");
   }
 
-  protected getBasePromptLines(args: DefaultToolInput): string[] {
+  protected getBasePromptLines(args: TArgs): string[] {
     const lines = [];
 
     lines.push(`Your role: ${this.role}`);

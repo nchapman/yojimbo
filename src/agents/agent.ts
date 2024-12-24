@@ -5,18 +5,21 @@ import {
 } from "openai/resources/chat/completions";
 import { Tool, DefaultToolInput, JSONSchema } from "../tools/tool";
 
-export interface AgentConfig {
+export interface AgentConfig<TArgs = DefaultToolInput> {
   role: string;
   goal?: string | null;
   backstory?: string | null;
-  parameters?: JSONSchema<DefaultToolInput>;
+  parameters?: JSONSchema<TArgs>;
   llm?: LLMCompletion;
   tools?: Tool[] | null;
   maxIter?: number | null;
   verbose?: boolean | null;
 }
 
-export class Agent extends Tool {
+export class Agent<TArgs = DefaultToolInput, TReturn = string> extends Tool<
+  TArgs,
+  TReturn
+> {
   public role: string;
   public goal: string | null;
   public backstory: string | null;
@@ -26,7 +29,7 @@ export class Agent extends Tool {
   public verbose: boolean;
   protected systemPrompt: string;
 
-  constructor(config: AgentConfig) {
+  constructor(config: AgentConfig<TArgs>) {
     super(config.role, config.goal ?? "", config.parameters);
     this.role = config.role;
     this.goal = config.goal ?? null;
@@ -43,12 +46,8 @@ export class Agent extends Tool {
     `);
   }
 
-  async execute(args: DefaultToolInput): Promise<string> {
-    if (!this.llm) {
-      throw new Error(
-        "LLM not configured. Please set the llm property before executing the agent."
-      );
-    }
+  async execute(args: TArgs): Promise<TReturn> {
+    this.ensureLLM();
 
     console.log("🤖 Starting agent execution...");
     const prompt = this.getPrompt(args);
@@ -68,13 +67,13 @@ export class Agent extends Tool {
     while (i < this.maxIter) {
       console.log(`📤 Sending request to LLM (iteration ${i + 1})...`);
 
-      const response = await this.llm({ messages, tools });
+      const response = await this.llm!({ messages, tools });
       const message = response.choices[0]?.message;
 
       // Return the response if no tool calls are detected
       if (!message?.tool_calls) {
         console.log("✅ Agent execution completed without tool usage");
-        return message?.content ?? "No response generated";
+        return (message?.content ?? "No response generated") as TReturn;
       }
 
       const newMessages = await this.handleToolCalls(message);
@@ -83,7 +82,7 @@ export class Agent extends Tool {
     }
 
     console.log("⚠️ Max iterations reached");
-    return "Max iterations reached without final response";
+    return "Max iterations reached without final response" as TReturn;
   }
 
   public getToolSchemas() {
@@ -97,7 +96,7 @@ export class Agent extends Tool {
     return this.tools.find((tool) => tool.funcName === funcName);
   }
 
-  protected getPrompt(args: DefaultToolInput): string {
+  protected getPrompt(args: TArgs): string {
     const lines = [];
 
     lines.push(`Your role: ${this.role}`);
@@ -122,6 +121,12 @@ export class Agent extends Tool {
     lines.push(`Respond as instructed.`);
 
     return lines.join("\n");
+  }
+
+  protected ensureLLM() {
+    if (!this.llm) {
+      throw new Error("LLM not configured");
+    }
   }
 
   private async handleToolCalls(

@@ -120,18 +120,38 @@ export class Agent<TArgs = DefaultToolInput, TReturn = string> extends Tool<
     const toolResults = await Promise.all(
       toolCalls.map(async (toolCall) => {
         const tool = this.findTool(toolCall.function.name);
-
         if (!tool) {
-          throw new Error(`Tool ${toolCall.function.name} not found`);
+          return {
+            result: {
+              error: `Tool ${toolCall.function.name} not found`,
+            },
+            toolCall,
+          };
         }
 
-        const args = JSON.parse(toolCall.function.arguments);
-        const result = await tool.execute(args);
+        let args;
+        try {
+          args = JSON.parse(toolCall.function.arguments);
+        } catch (e) {
+          return {
+            result: {
+              error: `Invalid JSON object: ${toolCall.function.arguments}`,
+            },
+            toolCall,
+          };
+        }
 
-        return {
-          result,
-          toolCall,
-        };
+        try {
+          const result = await tool.execute(args);
+          return { result, toolCall };
+        } catch (e: any) {
+          return {
+            result: {
+              error: `Error executing tool: ${e.message}`,
+            },
+            toolCall,
+          };
+        }
       })
     );
 

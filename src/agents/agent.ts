@@ -20,8 +20,8 @@ export class Agent<
 > extends Tool<TArgs, TReturn> {
   public role: string;
   public goal: string;
-  public approach: string | string[] | null;
-  public backstory: string | string[] | null;
+  public approach?: string | string[];
+  public backstory?: string | string[];
   public llm?: LLMCompletion;
   public tools: Tool[];
   public maxIter: number;
@@ -91,8 +91,6 @@ export class Agent<
       let toolCalls: ChatCompletion.Choice["message"]["tool_calls"] = [];
       let refusal: string | undefined = undefined;
       let finishReason: string | null = null;
-
-      console.log("Messages:", messages);
 
       const stream = (await this.llm!({
         messages,
@@ -310,9 +308,8 @@ export class Agent<
   }
 
   protected stringOrArrayToString(
-    value: string | string[] | null | undefined
-  ): string | null {
-    if (!value) return null;
+    value: string | string[] | undefined
+  ): string | undefined {
     return Array.isArray(value)
       ? value.map((item, index) => `${index + 1}. ${item}`).join("\n")
       : value;

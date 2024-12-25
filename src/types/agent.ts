@@ -6,13 +6,13 @@ import { LLMCompletion } from "./openai";
 export interface AgentConfig<TArgs = DefaultToolInput> {
   role: string;
   goal: string;
-  approach?: string | string[] | null;
-  backstory?: string | string[] | null;
+  approach?: string | string[];
+  backstory?: string | string[];
   parameters?: JSONSchema<OmitBaseToolInput<TArgs>>;
   llm?: LLMCompletion;
-  tools?: Tool[] | null;
-  maxIter?: number | null;
-  verbose?: boolean | null;
+  tools?: Tool[];
+  maxIter?: number;
+  verbose?: boolean;
   skipPropagation?: boolean;
   allowParallelToolCalls?: boolean;
 }

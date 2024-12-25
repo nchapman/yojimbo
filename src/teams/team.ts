@@ -17,7 +17,7 @@ export class Team<
   TReturn = string
 > extends Agent<TArgs, TReturn> {
   private agents: Agent[];
-  private plan: string | null;
+  private plan?: string;
 
   constructor(config: TeamConfig<TArgs>) {
     super({
@@ -29,7 +29,6 @@ export class Team<
 
     this.agents = config.agents;
     this.plan = this.stringOrArrayToString(config.plan);
-
     this.systemPrompt = teamSystemPrompt;
 
     this.propagate();

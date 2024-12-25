@@ -49,12 +49,13 @@ export const buildTeamBasePrompt = compileTemplate(`
 
 export const buildTeamPrompt = compileTemplate(`
   {{basePrompt}}
+  The user cannot see any of the messages from the agents.
+  You MUST incorporate all the information they provided into your response.
+  Don't mention the agents or the plan in your response.
   {{#if plan}}
     You must follow this plan exactly:
     {{plan}}
   {{/if}}
-  Make sure you incorporate all the information from the agents (tools) into your response.
-  Don't mention the agents or the plan in your response.
 `);
 
 export const buildTeamPlanPrompt = compileTemplate(`

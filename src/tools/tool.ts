@@ -2,10 +2,17 @@ import { ChatCompletionTool } from "../types/openai";
 import mitt, { Emitter } from "mitt";
 import { ulid } from "ulid";
 import { JSONSchema } from "../types/schema";
-import { BaseToolEvent, ToolEvents, DefaultToolInput } from "../types/tools";
+import {
+  BaseToolEvent,
+  ToolEvents,
+  DefaultToolInput,
+  BaseToolInput,
+} from "../types/tools";
 import Ajv from "ajv";
 
-const DEFAULT_PARAMETERS: JSONSchema<DefaultToolInput> = {
+const DEFAULT_PARAMETERS: JSONSchema<
+  Omit<DefaultToolInput, keyof BaseToolInput>
+> = {
   properties: {
     input: {
       type: "string",
@@ -15,19 +22,24 @@ const DEFAULT_PARAMETERS: JSONSchema<DefaultToolInput> = {
   required: ["input"],
 };
 
-export abstract class Tool<TArgs = DefaultToolInput, TReturn = string> {
+export abstract class Tool<
+  TArgs extends BaseToolInput = DefaultToolInput,
+  TReturn = string
+> {
   id: string;
   funcName: string;
   name: string;
   description: string;
-  parameters: JSONSchema<TArgs>;
+  parameters: JSONSchema<Omit<TArgs, keyof BaseToolInput>>;
   emitter: Emitter<ToolEvents>;
   parentTool?: Tool<any, any>;
 
   constructor(
     name: string,
     description: string,
-    parameters: JSONSchema<TArgs> = DEFAULT_PARAMETERS as JSONSchema<TArgs>,
+    parameters: JSONSchema<
+      Omit<TArgs, keyof BaseToolInput>
+    > = DEFAULT_PARAMETERS as JSONSchema<Omit<TArgs, keyof BaseToolInput>>,
     emitter?: Emitter<ToolEvents>,
     parentTool?: Tool<any, any>
   ) {
@@ -57,12 +69,13 @@ export abstract class Tool<TArgs = DefaultToolInput, TReturn = string> {
 
   public async execute(args: TArgs): Promise<TReturn> {
     try {
+      const { scratchpad, ...restArgs } = args;
       // Make sure the arguments are valid
-      this.validateArgsOrThrow(args);
+      this.validateArgsOrThrow(restArgs as TArgs);
 
       this.emit("start", {
         message: `Starting ${this.name}`,
-        args,
+        args: restArgs,
       });
 
       const result = await this.run(args);

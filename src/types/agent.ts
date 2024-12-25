@@ -13,4 +13,5 @@ export interface AgentConfig<TArgs = DefaultToolInput> {
   maxIter?: number | null;
   verbose?: boolean | null;
   skipPropagation?: boolean;
+  allowParallelToolCalls?: boolean;
 }

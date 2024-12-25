@@ -6,14 +6,14 @@ import {
   LLMCompletion,
 } from "../types/openai";
 import { Tool } from "../tools/tool";
-import { DefaultToolInput } from "../types/tools";
+import { BaseToolInput, DefaultToolInput, Scratchpad } from "../types/tools";
 import { AgentConfig } from "../types/agent";
 import { agentSystemPrompt, buildAgentPrompt } from "../prompts";
 
-export class Agent<TArgs = DefaultToolInput, TReturn = string> extends Tool<
-  TArgs,
-  TReturn
-> {
+export class Agent<
+  TArgs extends BaseToolInput = DefaultToolInput,
+  TReturn = string
+> extends Tool<TArgs, TReturn> {
   public role: string;
   public goal: string | null;
   public backstory: string | null;
@@ -21,6 +21,7 @@ export class Agent<TArgs = DefaultToolInput, TReturn = string> extends Tool<
   public tools: Tool[];
   public maxIter: number;
   public verbose: boolean;
+  public allowParallelToolCalls: boolean;
   protected systemPrompt: string;
 
   constructor(config: AgentConfig<TArgs>) {
@@ -34,6 +35,7 @@ export class Agent<TArgs = DefaultToolInput, TReturn = string> extends Tool<
     this.verbose = config.verbose ?? false;
     this.funcName = this.getFuncName("Agent");
     this.systemPrompt = agentSystemPrompt;
+    this.allowParallelToolCalls = config.allowParallelToolCalls ?? false;
 
     if (!config.skipPropagation) {
       this.propagate();
@@ -51,18 +53,36 @@ export class Agent<TArgs = DefaultToolInput, TReturn = string> extends Tool<
     this.ensureLLM();
     const tools = this.getToolSchemas();
 
+    // Scratchpads: for our peers and our tools
+    const peersScratchpad: Scratchpad[] = args.scratchpad ?? [];
+    const toolsScratchpad: Scratchpad[] = [];
+
     let messages: ChatCompletionMessageParam[] = [
       { role: "system", content: this.systemPrompt },
-      { role: "user", content: "" },
     ];
+
+    // If we have a scratchpad, add it to the messages
+    if (peersScratchpad.length > 0) {
+      messages.push({
+        role: "user",
+        content: this.scratchpadToString(peersScratchpad),
+      });
+    }
+
+    // Placeholder for our prompt
+    messages.push({ role: "user", content: "" });
 
     let i = 0;
     while (i <= this.maxIter) {
       const isLastIteration = i === this.maxIter;
       const includeTools = !isLastIteration;
 
+      // Update the user message with the prompt
       const prompt = this.getPrompt(args, includeTools);
-      messages[1].content = prompt;
+      const lastUserMessage = messages.findLast(
+        (message) => message.role === "user"
+      );
+      lastUserMessage!.content = prompt;
 
       // Create a new response to accumulate the streaming content
       let accumulatedContent = "";
@@ -70,10 +90,16 @@ export class Agent<TArgs = DefaultToolInput, TReturn = string> extends Tool<
       let refusal: string | undefined = undefined;
       let finishReason: string | null = null;
 
+      // console.log("Messages:", messages);
+
       const stream = (await this.llm!({
         messages,
         tools: includeTools ? tools : undefined,
         stream: true,
+        parallel_tool_calls:
+          includeTools && tools?.length
+            ? this.allowParallelToolCalls
+            : undefined,
       })) as Stream<ChatCompletionChunk>;
 
       // Process each chunk of the stream
@@ -151,7 +177,10 @@ export class Agent<TArgs = DefaultToolInput, TReturn = string> extends Tool<
       }
 
       // Handle tool calls as before
-      const newMessages = await this.executeToolCalls(syntheticMessage);
+      const newMessages = await this.executeToolCalls(
+        syntheticMessage,
+        toolsScratchpad
+      );
       messages.push(...newMessages);
       i++;
     }
@@ -171,12 +200,13 @@ export class Agent<TArgs = DefaultToolInput, TReturn = string> extends Tool<
   }
 
   protected getPrompt(args: TArgs, includeTools = true): string {
+    const { scratchpad, ...restArgs } = args;
     return buildAgentPrompt({
       role: this.role,
       goal: this.goal,
       backstory: this.backstory,
       tools: includeTools ? this.tools : undefined,
-      args: JSON.stringify(args),
+      args: JSON.stringify(restArgs),
     });
   }
 
@@ -187,7 +217,8 @@ export class Agent<TArgs = DefaultToolInput, TReturn = string> extends Tool<
   }
 
   private async executeToolCalls(
-    message: ChatCompletion.Choice["message"]
+    message: ChatCompletion.Choice["message"],
+    scratchpad: { tool: string; result: string }[]
   ): Promise<ChatCompletionMessageParam[]> {
     const toolCalls = message.tool_calls!;
 
@@ -217,7 +248,7 @@ export class Agent<TArgs = DefaultToolInput, TReturn = string> extends Tool<
 
         try {
           // Execute will throw if the arguments are invalid
-          const result = await tool.execute(args);
+          const result = await tool.execute({ scratchpad, ...args });
           return { result, toolCall };
         } catch (e: any) {
           return {
@@ -228,6 +259,14 @@ export class Agent<TArgs = DefaultToolInput, TReturn = string> extends Tool<
           };
         }
       })
+    );
+
+    // Add the tool results to the scratchpad
+    scratchpad.push(
+      ...toolResults.map(({ result, toolCall }) => ({
+        tool: toolCall.function.name,
+        result: JSON.stringify(result),
+      }))
     );
 
     return [
@@ -242,5 +281,23 @@ export class Agent<TArgs = DefaultToolInput, TReturn = string> extends Tool<
         tool_call_id: toolCall.id,
       })),
     ];
+  }
+
+  protected scratchpadToString(scratchpad: Scratchpad[]): string {
+    const lines = [
+      "This is a scratchpad of information collected from other tools that only you can see.",
+    ];
+
+    if (scratchpad.length === 0) {
+      lines.push("*No information has been collected yet.*");
+    } else {
+      for (const { tool, result } of scratchpad) {
+        lines.push(`**${tool}**`);
+        lines.push(result);
+        lines.push("");
+      }
+    }
+
+    return lines.join("\n");
   }
 }

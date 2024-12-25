@@ -27,6 +27,15 @@ export type ToolEvents = {
   };
 };
 
-export interface DefaultToolInput {
+export interface Scratchpad {
+  tool: string;
+  result: string;
+}
+
+export interface BaseToolInput {
+  scratchpad?: Scratchpad[];
+}
+
+export interface DefaultToolInput extends BaseToolInput {
   input: string;
 }

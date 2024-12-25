@@ -3,7 +3,7 @@ import {
   ChatCompletionMessageParam,
 } from "openai/resources/chat/completions";
 import { Agent } from "../agents/agent";
-import { DefaultToolInput } from "../types/tools";
+import { BaseToolInput, DefaultToolInput } from "../types/tools";
 import { TeamConfig } from "../types/team";
 import {
   buildTeamPrompt,
@@ -12,10 +12,10 @@ import {
   teamSystemPrompt,
 } from "../prompts";
 
-export class Team<TArgs = DefaultToolInput, TReturn = string> extends Agent<
-  TArgs,
-  TReturn
-> {
+export class Team<
+  TArgs extends BaseToolInput = DefaultToolInput,
+  TReturn = string
+> extends Agent<TArgs, TReturn> {
   private agents: Agent[];
   private plan: string | null;
 
@@ -88,6 +88,7 @@ export class Team<TArgs = DefaultToolInput, TReturn = string> extends Agent<
 
       const response = (await this.llm!({ messages })) as ChatCompletion;
       this.plan = response.choices[0]?.message?.content ?? "No plan generated.";
+      console.log("Plan:", this.plan);
     }
   }
 

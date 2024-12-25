@@ -6,6 +6,6 @@ export interface TeamConfig<TArgs = DefaultToolInput>
   extends Omit<AgentConfig<TArgs>, "role" | "goal"> {
   role?: string;
   goal?: string;
-  plan?: string;
+  plan?: string | string[];
   agents: Agent[];
 }

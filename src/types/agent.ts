@@ -6,8 +6,8 @@ import { LLMCompletion } from "./openai";
 export interface AgentConfig<TArgs = DefaultToolInput> {
   role: string;
   goal: string;
-  approach?: string | null;
-  backstory?: string | null;
+  approach?: string | string[] | null;
+  backstory?: string | string[] | null;
   parameters?: JSONSchema<OmitBaseToolInput<TArgs>>;
   llm?: LLMCompletion;
   tools?: Tool[] | null;

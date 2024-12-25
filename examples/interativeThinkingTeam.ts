@@ -49,7 +49,7 @@ const analyst = new Agent({
     "Identify relevant contexts and perspectives",
     "Surface important questions and challenges",
     "Create an organized framework for deeper exploration",
-  ].join("\n"),
+  ],
 });
 
 const strategist = new Agent({
@@ -60,7 +60,7 @@ const strategist = new Agent({
     "Construct clear arguments and explanations",
     "Draw meaningful connections",
     "Propose well-reasoned approaches or solutions",
-  ].join("\n"),
+  ],
 });
 
 const critic = new Agent({
@@ -71,7 +71,7 @@ const critic = new Agent({
     "Identify gaps or weaknesses",
     "Test key arguments and assumptions",
     "Suggest specific refinements to strengthen the analysis",
-  ].join("\n"),
+  ],
 });
 
 const team = new Team({
@@ -82,7 +82,7 @@ const team = new Team({
     "Develop clear, well-reasoned arguments or solutions",
     "Address complexities and alternative perspectives",
     "Deliver a cohesive narrative",
-  ].join("\n"),
+  ],
   llm,
 });
 

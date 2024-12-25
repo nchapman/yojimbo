@@ -28,7 +28,7 @@ export class Team<
     });
 
     this.agents = config.agents;
-    this.plan = config.plan ?? null;
+    this.plan = this.stringOrArrayToString(config.plan);
 
     this.systemPrompt = teamSystemPrompt;
 

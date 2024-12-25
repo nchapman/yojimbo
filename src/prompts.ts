@@ -9,7 +9,8 @@ export const agentSystemPrompt = trimIndent(`
 export const buildAgentPrompt = compileTemplate(`
   Your role: {{role}}
   {{#if backstory}}
-    Your backstory: {{backstory}}
+    Your backstory:
+    {{backstory}}
   {{/if}}
   {{#if tools.length}}
     You can use these tools:
@@ -19,7 +20,8 @@ export const buildAgentPrompt = compileTemplate(`
   {{/if}}
   Input: {{args}}
   {{#if approach}}
-    Your approach: {{approach}}
+    Your approach:
+    {{approach}}
   {{/if}}
   {{#if goal}}
     Your goal: {{goal}}
@@ -36,7 +38,8 @@ export const teamSystemPrompt = trimIndent(`
 export const buildTeamBasePrompt = compileTemplate(`
   Your role: {{role}}
   {{#if backstory}}
-    Your backstory: {{backstory}}
+    Your backstory:
+    {{backstory}}
   {{/if}}
   {{#if agents.length}}
     You can use these tools:
@@ -46,7 +49,8 @@ export const buildTeamBasePrompt = compileTemplate(`
   {{/if}}
   Input: {{args}}
   {{#if approach}}
-    Your approach: {{approach}}
+    Your approach:
+    {{approach}}
   {{/if}}
   {{#if goal}}
     Your goal: {{goal}}
@@ -75,7 +79,7 @@ export const buildTeamPlanPrompt = compileTemplate(`
 `);
 
 export const buildWorkingMemoryPrompt = compileTemplate(`
-  This is a list of information collected from other tools that only you can see.
+  *This is a list of information collected from other tools that only the assistant can see.*
   ---
   {{#each workingMemory}}
     ## Tool: {{tool}}

@@ -20,8 +20,8 @@ export class Agent<
 > extends Tool<TArgs, TReturn> {
   public role: string;
   public goal: string;
-  public approach: string | null;
-  public backstory: string | null;
+  public approach: string | string[] | null;
+  public backstory: string | string[] | null;
   public llm?: LLMCompletion;
   public tools: Tool[];
   public maxIter: number;
@@ -33,8 +33,8 @@ export class Agent<
     super(config.role, config.goal, config.parameters);
     this.role = config.role;
     this.goal = config.goal;
-    this.backstory = config.backstory ?? null;
-    this.approach = config.approach ?? null;
+    this.backstory = this.stringOrArrayToString(config.backstory);
+    this.approach = this.stringOrArrayToString(config.approach);
     this.llm = config.llm;
     this.tools = config.tools ?? [];
     this.maxIter = config.maxIter ?? Math.max(this.tools.length, 5);
@@ -70,7 +70,7 @@ export class Agent<
     // If we have working memory, add it to the messages
     if (peersWorkingMemory.length > 0) {
       messages.push({
-        role: "user",
+        role: "assistant",
         content: this.workingMemoryToPrompt(peersWorkingMemory),
       });
     }
@@ -91,6 +91,8 @@ export class Agent<
       let toolCalls: ChatCompletion.Choice["message"]["tool_calls"] = [];
       let refusal: string | undefined = undefined;
       let finishReason: string | null = null;
+
+      console.log("Messages:", messages);
 
       const stream = (await this.llm!({
         messages,
@@ -305,5 +307,14 @@ export class Agent<
       hasWorkingMemory: workingMemory.length > 0,
       workingMemory,
     });
+  }
+
+  protected stringOrArrayToString(
+    value: string | string[] | null | undefined
+  ): string | null {
+    if (!value) return null;
+    return Array.isArray(value)
+      ? value.map((item, index) => `${index + 1}. ${item}`).join("\n")
+      : value;
   }
 }

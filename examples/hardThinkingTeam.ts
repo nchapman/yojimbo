@@ -16,17 +16,17 @@ const llm: LLMCompletion = async (args) => {
   });
 };
 
-const customPlan = `
-Use one agent at a time. You must use the output of the previous agent as the input for the next agent.
-1. Analyst breaks down the problem into core components and identifies key challenges
-2. Strategist develops a solution framework based on the analysis
-3. Critic evaluates the strategy and highlights potential issues
-4. Strategist refines the solution incorporating critic's feedback
-5. You synthesize the final response:
-   - Context and problem statement
-   - Structured solution
-   - Key considerations and mitigation strategies
-`;
+// const customPlan = `
+// Use one agent at a time. You must use the output of the previous agent as the input for the next agent.
+// 1. Analyst breaks down the problem into core components and identifies key challenges
+// 2. Strategist develops a solution framework based on the analysis
+// 3. Critic evaluates the strategy and highlights potential issues
+// 4. Strategist refines the solution incorporating critic's feedback
+// 5. You synthesize the final response:
+//    - Context and problem statement
+//    - Structured solution
+//    - Key considerations and mitigation strategies
+// `;
 
 const prompts = [
   "Analyze the complex interplay of social, economic, and political factors that led to the fall of the Soviet Union. Focus on key events like Gorbachev's reforms, the Chernobyl disaster, and the role of Western influence. Explore alternative outcomes if specific policies had been different.",
@@ -43,22 +43,46 @@ const prompts = [
 
 const analyst = new Agent({
   role: "Analyst",
-  goal: "Systematically examine the topic by: 1) Breaking down key elements and relationships, 2) Identifying relevant contexts and perspectives, 3) Surfacing important questions and challenges, and 4) Creating an organized framework for deeper exploration.",
+  goal: "Break down the topic into a clear analytical framework that surfaces key insights and challenges",
+  approach: [
+    "Break down key elements and relationships",
+    "Identify relevant contexts and perspectives",
+    "Surface important questions and challenges",
+    "Create an organized framework for deeper exploration",
+  ].join("\n"),
 });
 
 const strategist = new Agent({
   role: "Strategist",
-  goal: "Develop a comprehensive response by: 1) Building on the analyst's framework, 2) Constructing clear arguments and explanations, 3) Drawing meaningful connections, and 4) Proposing well-reasoned approaches or solutions.",
+  goal: "Develop a comprehensive solution that addresses the core challenges identified",
+  approach: [
+    "Build on the analyst's framework",
+    "Construct clear arguments and explanations",
+    "Draw meaningful connections",
+    "Propose well-reasoned approaches or solutions",
+  ].join("\n"),
 });
 
 const critic = new Agent({
   role: "Critic",
-  goal: "Rigorously evaluate the response through: 1) Examining logical consistency, 2) Identifying gaps or weaknesses, 3) Testing key arguments and assumptions, and 4) Suggesting specific refinements to strengthen the analysis.",
+  goal: "Evaluate and strengthen the proposed solution",
+  approach: [
+    "Examine logical consistency",
+    "Identify gaps or weaknesses",
+    "Test key arguments and assumptions",
+    "Suggest specific refinements to strengthen the analysis",
+  ].join("\n"),
 });
 
 const team = new Team({
   agents: [analyst, strategist, critic],
-  goal: "Generate an insightful, well-structured response that: 1) Provides relevant context and foundational understanding, 2) Develops clear, well-reasoned arguments or solutions, 3) Addresses complexities and alternative perspectives, and 4) Delivers a cohesive narrative that demonstrates deep comprehension of the topic.",
+  goal: "Generate an insightful, well-structured response that demonstrates deep comprehension of the topic",
+  approach: [
+    "Provide relevant context and foundational understanding",
+    "Develop clear, well-reasoned arguments or solutions",
+    "Address complexities and alternative perspectives",
+    "Deliver a cohesive narrative",
+  ].join("\n"),
   llm,
 });
 

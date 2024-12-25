@@ -7,6 +7,7 @@ import {
   ToolEvents,
   DefaultToolInput,
   BaseToolInput,
+  OmitBaseToolInput,
 } from "../types/tools";
 import Ajv from "ajv";
 
@@ -30,7 +31,7 @@ export abstract class Tool<
   funcName: string;
   name: string;
   description: string;
-  parameters: JSONSchema<Omit<TArgs, keyof BaseToolInput>>;
+  parameters: JSONSchema<OmitBaseToolInput<TArgs>>;
   emitter: Emitter<ToolEvents>;
   parentTool?: Tool<any, any>;
 
@@ -38,8 +39,8 @@ export abstract class Tool<
     name: string,
     description: string,
     parameters: JSONSchema<
-      Omit<TArgs, keyof BaseToolInput>
-    > = DEFAULT_PARAMETERS as JSONSchema<Omit<TArgs, keyof BaseToolInput>>,
+      OmitBaseToolInput<TArgs>
+    > = DEFAULT_PARAMETERS as JSONSchema<OmitBaseToolInput<TArgs>>,
     emitter?: Emitter<ToolEvents>,
     parentTool?: Tool<any, any>
   ) {
@@ -69,7 +70,7 @@ export abstract class Tool<
 
   public async execute(args: TArgs): Promise<TReturn> {
     try {
-      const { scratchpad, ...restArgs } = args;
+      const { workingMemory, ...restArgs } = args;
       // Make sure the arguments are valid
       this.validateArgsOrThrow(restArgs as TArgs);
 

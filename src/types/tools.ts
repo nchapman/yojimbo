@@ -27,14 +27,17 @@ export type ToolEvents = {
   };
 };
 
-export interface Scratchpad {
+export interface WorkingMemory {
   tool: string;
+  input: string;
   result: string;
 }
 
 export interface BaseToolInput {
-  scratchpad?: Scratchpad[];
+  workingMemory?: WorkingMemory[];
 }
+
+export type OmitBaseToolInput<T> = Omit<T, keyof BaseToolInput>;
 
 export interface DefaultToolInput extends BaseToolInput {
   input: string;

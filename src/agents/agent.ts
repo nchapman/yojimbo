@@ -6,16 +6,21 @@ import {
   LLMCompletion,
 } from "../types/openai";
 import { Tool } from "../tools/tool";
-import { BaseToolInput, DefaultToolInput, Scratchpad } from "../types/tools";
+import { BaseToolInput, DefaultToolInput, WorkingMemory } from "../types/tools";
 import { AgentConfig } from "../types/agent";
-import { agentSystemPrompt, buildAgentPrompt } from "../prompts";
+import {
+  agentSystemPrompt,
+  buildAgentPrompt,
+  buildWorkingMemoryPrompt,
+} from "../prompts";
 
 export class Agent<
   TArgs extends BaseToolInput = DefaultToolInput,
   TReturn = string
 > extends Tool<TArgs, TReturn> {
   public role: string;
-  public goal: string | null;
+  public goal: string;
+  public approach: string | null;
   public backstory: string | null;
   public llm?: LLMCompletion;
   public tools: Tool[];
@@ -25,10 +30,11 @@ export class Agent<
   protected systemPrompt: string;
 
   constructor(config: AgentConfig<TArgs>) {
-    super(config.role, config.goal ?? "", config.parameters);
+    super(config.role, config.goal, config.parameters);
     this.role = config.role;
-    this.goal = config.goal ?? null;
+    this.goal = config.goal;
     this.backstory = config.backstory ?? null;
+    this.approach = config.approach ?? null;
     this.llm = config.llm;
     this.tools = config.tools ?? [];
     this.maxIter = config.maxIter ?? Math.max(this.tools.length, 5);
@@ -53,19 +59,19 @@ export class Agent<
     this.ensureLLM();
     const tools = this.getToolSchemas();
 
-    // Scratchpads: for our peers and our tools
-    const peersScratchpad: Scratchpad[] = args.scratchpad ?? [];
-    const toolsScratchpad: Scratchpad[] = [];
+    // Working memory: from our peers and for our tools
+    const peersWorkingMemory: WorkingMemory[] = args.workingMemory ?? [];
+    const toolsWorkingMemory: WorkingMemory[] = [];
 
     let messages: ChatCompletionMessageParam[] = [
       { role: "system", content: this.systemPrompt },
     ];
 
-    // If we have a scratchpad, add it to the messages
-    if (peersScratchpad.length > 0) {
+    // If we have working memory, add it to the messages
+    if (peersWorkingMemory.length > 0) {
       messages.push({
         role: "user",
-        content: this.scratchpadToString(peersScratchpad),
+        content: this.workingMemoryToPrompt(peersWorkingMemory),
       });
     }
 
@@ -78,19 +84,13 @@ export class Agent<
       const includeTools = !isLastIteration;
 
       // Update the user message with the prompt
-      const prompt = this.getPrompt(args, includeTools);
-      const lastUserMessage = messages.findLast(
-        (message) => message.role === "user"
-      );
-      lastUserMessage!.content = prompt;
+      this.updateLastUserMessage(messages, this.getPrompt(args, includeTools));
 
       // Create a new response to accumulate the streaming content
       let accumulatedContent = "";
       let toolCalls: ChatCompletion.Choice["message"]["tool_calls"] = [];
       let refusal: string | undefined = undefined;
       let finishReason: string | null = null;
-
-      // console.log("Messages:", messages);
 
       const stream = (await this.llm!({
         messages,
@@ -179,13 +179,28 @@ export class Agent<
       // Handle tool calls as before
       const newMessages = await this.executeToolCalls(
         syntheticMessage,
-        toolsScratchpad
+        toolsWorkingMemory
       );
       messages.push(...newMessages);
       i++;
     }
 
     return "Sorry, we reached the maximum number of iterations without a response" as TReturn;
+  }
+
+  protected updateLastUserMessage(
+    messages: ChatCompletionMessageParam[],
+    content: string
+  ) {
+    const lastUserMessage = messages.findLast(
+      (message) => message.role === "user"
+    );
+
+    if (!lastUserMessage) {
+      throw new Error("No user message found");
+    }
+
+    lastUserMessage.content = content;
   }
 
   public getToolSchemas() {
@@ -200,10 +215,11 @@ export class Agent<
   }
 
   protected getPrompt(args: TArgs, includeTools = true): string {
-    const { scratchpad, ...restArgs } = args;
+    const { workingMemory, ...restArgs } = args;
     return buildAgentPrompt({
       role: this.role,
       goal: this.goal,
+      approach: this.approach,
       backstory: this.backstory,
       tools: includeTools ? this.tools : undefined,
       args: JSON.stringify(restArgs),
@@ -218,7 +234,7 @@ export class Agent<
 
   private async executeToolCalls(
     message: ChatCompletion.Choice["message"],
-    scratchpad: { tool: string; result: string }[]
+    workingMemory: WorkingMemory[]
   ): Promise<ChatCompletionMessageParam[]> {
     const toolCalls = message.tool_calls!;
 
@@ -248,8 +264,8 @@ export class Agent<
 
         try {
           // Execute will throw if the arguments are invalid
-          const result = await tool.execute({ scratchpad, ...args });
-          return { result, toolCall };
+          const result = await tool.execute({ workingMemory, ...args });
+          return { args, result, toolCall };
         } catch (e: any) {
           return {
             result: {
@@ -261,10 +277,11 @@ export class Agent<
       })
     );
 
-    // Add the tool results to the scratchpad
-    scratchpad.push(
+    // Add the tool results to the working memory
+    workingMemory.push(
       ...toolResults.map(({ result, toolCall }) => ({
         tool: toolCall.function.name,
+        input: toolCall.function.arguments,
         result: JSON.stringify(result),
       }))
     );
@@ -283,21 +300,10 @@ export class Agent<
     ];
   }
 
-  protected scratchpadToString(scratchpad: Scratchpad[]): string {
-    const lines = [
-      "This is a scratchpad of information collected from other tools that only you can see.",
-    ];
-
-    if (scratchpad.length === 0) {
-      lines.push("*No information has been collected yet.*");
-    } else {
-      for (const { tool, result } of scratchpad) {
-        lines.push(`**${tool}**`);
-        lines.push(result);
-        lines.push("");
-      }
-    }
-
-    return lines.join("\n");
+  protected workingMemoryToPrompt(workingMemory: WorkingMemory[]): string {
+    return buildWorkingMemoryPrompt({
+      hasWorkingMemory: workingMemory.length > 0,
+      workingMemory,
+    });
   }
 }

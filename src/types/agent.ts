@@ -1,13 +1,14 @@
 import { JSONSchema } from "./schema";
-import { DefaultToolInput } from "./tools";
+import { DefaultToolInput, OmitBaseToolInput } from "./tools";
 import { Tool } from "../tools/tool";
 import { LLMCompletion } from "./openai";
 
 export interface AgentConfig<TArgs = DefaultToolInput> {
   role: string;
-  goal?: string | null;
+  goal: string;
+  approach?: string | null;
   backstory?: string | null;
-  parameters?: JSONSchema<TArgs>;
+  parameters?: JSONSchema<OmitBaseToolInput<TArgs>>;
   llm?: LLMCompletion;
   tools?: Tool[] | null;
   maxIter?: number | null;

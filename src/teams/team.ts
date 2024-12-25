@@ -88,7 +88,6 @@ export class Team<
 
       const response = (await this.llm!({ messages })) as ChatCompletion;
       this.plan = response.choices[0]?.message?.content ?? "No plan generated.";
-      console.log("Plan:", this.plan);
     }
   }
 
@@ -109,6 +108,7 @@ export class Team<
     return buildTeamBasePrompt({
       role: this.role,
       goal: this.goal,
+      approach: this.approach,
       backstory: this.backstory,
       agents: includeTools ? this.agents : undefined,
       args: JSON.stringify(args),

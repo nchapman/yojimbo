@@ -10,6 +10,7 @@ export type BaseToolEvent = {
 export type ToolEvents = {
   start: BaseToolEvent & {
     message: string;
+    args?: any;
   };
   complete: BaseToolEvent & {
     message: string;

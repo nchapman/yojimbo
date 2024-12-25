@@ -62,6 +62,7 @@ export abstract class Tool<TArgs = DefaultToolInput, TReturn = string> {
 
       this.emit("start", {
         message: `Starting ${this.name}`,
+        args,
       });
 
       const result = await this.run(args);

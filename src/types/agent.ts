@@ -1,7 +1,7 @@
-import { JSONSchema } from "./schema";
-import { DefaultToolInput, OmitBaseToolInput } from "./tools";
-import { Tool } from "../tools/tool";
-import { LLMCompletion } from "./openai";
+import { JSONSchema } from './schema';
+import { DefaultToolInput, OmitBaseToolInput } from './tools';
+import { Tool } from '../tools/tool';
+import { LLMCompletion } from './openai';
 
 export interface AgentConfig<TArgs = DefaultToolInput> {
   role: string;

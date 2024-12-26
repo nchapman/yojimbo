@@ -1,25 +1,18 @@
-import {
-  ChatCompletion,
-  ChatCompletionMessageParam,
-} from "openai/resources/chat/completions";
-import { Agent } from "../agents/agent";
-import {
-  BaseToolInput,
-  DefaultToolInput,
-  ToolEventListener,
-} from "../types/tools";
-import { PlanStep, TeamConfig } from "../types/team";
+import { ChatCompletion, ChatCompletionMessageParam } from 'openai/resources/chat/completions';
+import { Agent } from '../agents/agent';
+import { BaseToolInput, DefaultToolInput, ToolEventListener } from '../types/tools';
+import { PlanStep, TeamConfig } from '../types/team';
 import {
   buildAgentPrompt,
   buildTeamPrompt,
   buildTeamPlanPrompt,
   teamSystemPrompt,
-} from "../prompts";
+} from '../prompts';
 
-export class Team<
-  TArgs extends BaseToolInput = DefaultToolInput,
-  TReturn = string
-> extends Agent<TArgs, TReturn> {
+export class Team<TArgs extends BaseToolInput = DefaultToolInput, TReturn = string> extends Agent<
+  TArgs,
+  TReturn
+> {
   private agents: Agent[];
   private plan?: string;
   private planState?: PlanStep[];
@@ -28,8 +21,8 @@ export class Team<
   constructor(config: TeamConfig<TArgs>) {
     super({
       ...config,
-      role: config.role ?? "Agent Manager",
-      goal: config.goal ?? "Use the provided agents to respond to the input",
+      role: config.role ?? 'Agent Manager',
+      goal: config.goal ?? 'Use the provided agents to respond to the input',
       skipPropagation: true,
     });
 
@@ -95,12 +88,12 @@ export class Team<
       });
 
       const messages: ChatCompletionMessageParam[] = [
-        { role: "system", content: this.systemPrompt },
-        { role: "user", content: planPrompt },
+        { role: 'system', content: this.systemPrompt },
+        { role: 'user', content: planPrompt },
       ];
 
       const response = (await this.llm!({ messages })) as ChatCompletion;
-      this.plan = response.choices[0]?.message?.content ?? "No plan generated.";
+      this.plan = response.choices[0]?.message?.content ?? 'No plan generated.';
     }
   }
 
@@ -134,23 +127,22 @@ export class Team<
     this.planState = this.convertPlanToSteps(this.plan);
 
     // Emit the initial plan
-    this.emit("plan", { plan: this.planState });
+    this.emit('plan', { plan: this.planState });
 
     // Handler for depth 1 start/complete events
-    const handlePlanEvent =
-      (eventType: "running" | "completed") => (args: any) => {
-        if (args.depth === 1) {
-          const name = args.tool.funcName;
-          const step = this.planState?.find(
-            (step) => step.content.includes(name) && step.state !== "completed"
-          );
-          // Only update if the step is not already completed
-          if (step) {
-            step.state = eventType;
-            this.emit("plan", { plan: this.planState });
-          }
+    const handlePlanEvent = (eventType: 'running' | 'completed') => (args: any) => {
+      if (args.depth === 1) {
+        const name = args.tool.funcName;
+        const step = this.planState?.find(
+          (step) => step.content.includes(name) && step.state !== 'completed',
+        );
+        // Only update if the step is not already completed
+        if (step) {
+          step.state = eventType;
+          this.emit('plan', { plan: this.planState });
         }
-      };
+      }
+    };
 
     // Handle delta events from current team
     const deltaHandler = (args: any) => {
@@ -160,26 +152,22 @@ export class Team<
 
         // Remove this listener since we only need it once
         // TODO: Add a once method that handles depth and makes this easier
-        const deltaListener = this.planListeners.find(
-          (l) => l.event === "delta"
-        );
+        const deltaListener = this.planListeners.find((l) => l.event === 'delta');
         if (deltaListener) {
-          this.off("delta", deltaListener.handler);
-          this.planListeners = this.planListeners.filter(
-            (l) => l !== deltaListener
-          );
+          this.off('delta', deltaListener.handler);
+          this.planListeners = this.planListeners.filter((l) => l !== deltaListener);
         }
       }
     };
 
     // Store listeners so we can remove them later
-    const startHandler = handlePlanEvent("running");
-    const completeHandler = handlePlanEvent("completed");
+    const startHandler = handlePlanEvent('running');
+    const completeHandler = handlePlanEvent('completed');
 
     this.planListeners = [
-      { event: "start", handler: startHandler },
-      { event: "complete", handler: completeHandler },
-      { event: "delta", handler: deltaHandler },
+      { event: 'start', handler: startHandler },
+      { event: 'complete', handler: completeHandler },
+      { event: 'delta', handler: deltaHandler },
     ];
 
     // Attach listeners
@@ -210,28 +198,28 @@ export class Team<
     let statesChanged = false;
 
     this.planState.forEach((step) => {
-      if (step.state === "pending" || step.state === "running") {
-        step.state = "completed";
+      if (step.state === 'pending' || step.state === 'running') {
+        step.state = 'completed';
         statesChanged = true;
       }
     });
 
     // Only emit if states were changed
     if (statesChanged) {
-      this.emit("plan", { plan: this.planState });
+      this.emit('plan', { plan: this.planState });
     }
   }
 
   protected convertPlanToSteps(plan: string): PlanStep[] {
-    console.log("plan", plan);
+    console.log('plan', plan);
 
     return plan
-      .split("\n")
+      .split('\n')
       .filter((line) => line.trim()) // Filter out empty lines
       .map((line, index) => ({
         step: index + 1,
-        content: line.replace(/^\d+\.\s*/, ""),
-        state: "pending",
+        content: line.replace(/^\d+\.\s*/, ''),
+        state: 'pending',
       }));
   }
 }

@@ -1,5 +1,5 @@
-import { Tool } from "../tools/tool";
-import { PlanStep } from "./team";
+import { Tool } from '../tools/tool';
+import { PlanStep } from './team';
 
 // Base event type with common fields
 export type BaseToolEvent = {

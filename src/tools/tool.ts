@@ -1,32 +1,27 @@
-import { ChatCompletionTool } from "../types/openai";
-import mitt, { Emitter } from "mitt";
-import { ulid } from "ulid";
-import { JSONSchema } from "../types/schema";
+import { ChatCompletionTool } from '../types/openai';
+import mitt, { Emitter } from 'mitt';
+import { ulid } from 'ulid';
+import { JSONSchema } from '../types/schema';
 import {
   BaseToolEvent,
   ToolEvents,
   DefaultToolInput,
   BaseToolInput,
   OmitBaseToolInput,
-} from "../types/tools";
-import Ajv from "ajv";
+} from '../types/tools';
+import Ajv from 'ajv';
 
-const DEFAULT_PARAMETERS: JSONSchema<
-  Omit<DefaultToolInput, keyof BaseToolInput>
-> = {
+const DEFAULT_PARAMETERS: JSONSchema<Omit<DefaultToolInput, keyof BaseToolInput>> = {
   properties: {
     input: {
-      type: "string",
-      description: "Minimum input needed to complete the task",
+      type: 'string',
+      description: 'Minimum input needed to complete the task',
     },
   },
-  required: ["input"],
+  required: ['input'],
 };
 
-export abstract class Tool<
-  TArgs extends BaseToolInput = DefaultToolInput,
-  TReturn = string
-> {
+export abstract class Tool<TArgs extends BaseToolInput = DefaultToolInput, TReturn = string> {
   id: string;
   funcName: string;
   name: string;
@@ -38,29 +33,29 @@ export abstract class Tool<
   constructor(
     name: string,
     description: string,
-    parameters: JSONSchema<
+    parameters: JSONSchema<OmitBaseToolInput<TArgs>> = DEFAULT_PARAMETERS as JSONSchema<
       OmitBaseToolInput<TArgs>
-    > = DEFAULT_PARAMETERS as JSONSchema<OmitBaseToolInput<TArgs>>,
+    >,
     emitter?: Emitter<ToolEvents>,
-    parentTool?: Tool<any, any>
+    parentTool?: Tool<any, any>,
   ) {
     this.id = ulid();
     this.name = name;
     this.description = description;
     this.parameters = parameters;
-    this.funcName = this.getFuncName("Tool");
+    this.funcName = this.getFuncName('Tool');
     this.emitter = emitter || mitt();
     this.parentTool = parentTool;
   }
 
   public toSchema(): ChatCompletionTool {
     return {
-      type: "function",
+      type: 'function',
       function: {
         name: this.funcName,
         description: this.description,
         parameters: {
-          type: "object",
+          type: 'object',
           properties: this.parameters.properties,
           required: this.parameters.required,
         },
@@ -74,20 +69,20 @@ export abstract class Tool<
       // Make sure the arguments are valid
       this.validateArgsOrThrow(restArgs as TArgs);
 
-      this.emit("start", {
+      this.emit('start', {
         message: `Starting ${this.name}`,
         args: restArgs,
       });
 
       const result = await this.run(args);
 
-      this.emit("complete", {
+      this.emit('complete', {
         message: `Successfully completed ${this.name}`,
       });
 
       return result;
     } catch (error: any) {
-      this.emit("complete", {
+      this.emit('complete', {
         message: `Failed to complete ${this.name}`,
         error,
       });
@@ -98,7 +93,7 @@ export abstract class Tool<
   protected abstract run(args: TArgs): Promise<TReturn>;
 
   protected getFuncName(type: string) {
-    let funcName = this.name.replace(/\s+/g, "");
+    let funcName = this.name.replace(/\s+/g, '');
 
     // Append Agent if it's not already in the name
     if (!funcName.toLowerCase().includes(type.toLowerCase())) {
@@ -109,10 +104,8 @@ export abstract class Tool<
   }
 
   protected getGraphId(): string {
-    const nameWithId = `${this.name}:${this.id}`.replace(/\s+/g, "");
-    const graphId = this.parentTool
-      ? `${this.parentTool.getGraphId()}->${nameWithId}`
-      : nameWithId;
+    const nameWithId = `${this.name}:${this.id}`.replace(/\s+/g, '');
+    const graphId = this.parentTool ? `${this.parentTool.getGraphId()}->${nameWithId}` : nameWithId;
 
     return graphId;
   }
@@ -123,7 +116,7 @@ export abstract class Tool<
 
   protected emit(
     event: keyof ToolEvents,
-    data: Omit<ToolEvents[keyof ToolEvents], keyof BaseToolEvent>
+    data: Omit<ToolEvents[keyof ToolEvents], keyof BaseToolEvent>,
   ) {
     if (!this.emitter) return;
 
@@ -137,17 +130,11 @@ export abstract class Tool<
     this.emitter.emit(event, allData);
   }
 
-  public on<K extends keyof ToolEvents>(
-    event: K,
-    listener: (data: ToolEvents[K]) => void
-  ) {
+  public on<K extends keyof ToolEvents>(event: K, listener: (data: ToolEvents[K]) => void) {
     this.emitter.on(event, listener as any);
   }
 
-  public off<K extends keyof ToolEvents>(
-    event: K,
-    listener: (data: ToolEvents[K]) => void
-  ) {
+  public off<K extends keyof ToolEvents>(event: K, listener: (data: ToolEvents[K]) => void) {
     this.emitter.off(event, listener as any);
   }
 

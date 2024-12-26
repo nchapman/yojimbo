@@ -1,9 +1,4 @@
-export type JSONSchemaType =
-  | "string"
-  | "number"
-  | "boolean"
-  | "object"
-  | "array";
+export type JSONSchemaType = 'string' | 'number' | 'boolean' | 'object' | 'array';
 
 export type JSONSchema<T> = {
   properties: {

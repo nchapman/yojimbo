@@ -1,9 +1,9 @@
-import { AgentConfig } from "./agent";
-import { DefaultToolInput } from "./tools";
-import { Agent } from "../agents/agent";
+import { AgentConfig } from './agent';
+import { DefaultToolInput } from './tools';
+import { Agent } from '../agents/agent';
 
 export interface TeamConfig<TArgs = DefaultToolInput>
-  extends Omit<AgentConfig<TArgs>, "role" | "goal"> {
+  extends Omit<AgentConfig<TArgs>, 'role' | 'goal'> {
   role?: string;
   goal?: string;
   plan?: string | string[];
@@ -13,5 +13,5 @@ export interface TeamConfig<TArgs = DefaultToolInput>
 export interface PlanStep {
   step: number;
   content: string;
-  state: "pending" | "running" | "completed" | "failed";
+  state: 'pending' | 'running' | 'completed' | 'failed';
 }

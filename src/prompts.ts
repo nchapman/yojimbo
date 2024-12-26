@@ -1,4 +1,4 @@
-import { compileTemplate, trimIndent } from "./utils";
+import { compileTemplate, trimIndent } from './utils';
 
 export const agentSystemPrompt = trimIndent(`
   You are an AI assistant responding directly to user queries. Remember:

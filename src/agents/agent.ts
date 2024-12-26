@@ -5,20 +5,16 @@ import {
   Stream,
   LLMCompletion,
   ChatCompletionMessageToolCall,
-} from "../types/openai";
-import { Tool } from "../tools/tool";
-import { BaseToolInput, DefaultToolInput, WorkingMemory } from "../types/tools";
-import { AgentConfig } from "../types/agent";
-import {
-  agentSystemPrompt,
-  buildAgentPrompt,
-  buildWorkingMemoryPrompt,
-} from "../prompts";
+} from '../types/openai';
+import { Tool } from '../tools/tool';
+import { BaseToolInput, DefaultToolInput, WorkingMemory } from '../types/tools';
+import { AgentConfig } from '../types/agent';
+import { agentSystemPrompt, buildAgentPrompt, buildWorkingMemoryPrompt } from '../prompts';
 
-export class Agent<
-  TArgs extends BaseToolInput = DefaultToolInput,
-  TReturn = string
-> extends Tool<TArgs, TReturn> {
+export class Agent<TArgs extends BaseToolInput = DefaultToolInput, TReturn = string> extends Tool<
+  TArgs,
+  TReturn
+> {
   public role: string;
   public goal: string;
   public approach?: string | string[];
@@ -40,7 +36,7 @@ export class Agent<
     this.tools = config.tools ?? [];
     this.maxIter = config.maxIter ?? Math.max(this.tools.length, 5);
     this.verbose = config.verbose ?? false;
-    this.funcName = this.getFuncName("Agent");
+    this.funcName = this.getFuncName('Agent');
     this.systemPrompt = agentSystemPrompt;
     this.allowParallelToolCalls = config.allowParallelToolCalls ?? false;
 
@@ -64,20 +60,18 @@ export class Agent<
     const peersWorkingMemory: WorkingMemory[] = args.workingMemory ?? [];
     const toolsWorkingMemory: WorkingMemory[] = [];
 
-    let messages: ChatCompletionMessageParam[] = [
-      { role: "system", content: this.systemPrompt },
-    ];
+    let messages: ChatCompletionMessageParam[] = [{ role: 'system', content: this.systemPrompt }];
 
     // If we have working memory, add it to the messages
     if (peersWorkingMemory.length > 0) {
       messages.push({
-        role: "assistant",
+        role: 'assistant',
         content: this.workingMemoryToPrompt(peersWorkingMemory),
       });
     }
 
     // Placeholder for our prompt
-    messages.push({ role: "user", content: "" });
+    messages.push({ role: 'user', content: '' });
 
     let i = 0;
     while (i <= this.maxIter) {
@@ -92,8 +86,8 @@ export class Agent<
       this.updateLastUserMessage(messages, this.getPrompt(args, includeTools));
 
       // Create a new response to accumulate the streaming content
-      let accumulatedContent = "";
-      let toolCalls: ChatCompletion.Choice["message"]["tool_calls"] = [];
+      let accumulatedContent = '';
+      let toolCalls: ChatCompletion.Choice['message']['tool_calls'] = [];
       let refusal: string | undefined = undefined;
       let finishReason: string | null = null;
 
@@ -122,7 +116,7 @@ export class Agent<
         // Accumulate content if present
         if (delta.content) {
           accumulatedContent += delta.content;
-          this.emit("delta", { content: delta.content });
+          this.emit('delta', { content: delta.content });
         }
 
         // Handle tool calls
@@ -131,21 +125,19 @@ export class Agent<
             // Initialize tool call if it's new
             if (toolCall.index !== undefined) {
               toolCalls[toolCall.index] = toolCalls[toolCall.index] || {
-                id: toolCall.id || "",
-                type: "function",
-                function: { name: "", arguments: "" },
+                id: toolCall.id || '',
+                type: 'function',
+                function: { name: '', arguments: '' },
               };
 
               // Update the tool call properties
               if (toolCall.id) toolCalls[toolCall.index].id = toolCall.id;
               if (toolCall.function?.name) {
-                toolCalls[toolCall.index].function.name =
-                  toolCall.function.name;
+                toolCalls[toolCall.index].function.name = toolCall.function.name;
                 // Optional: this.emit("tool_call", { name: toolCall.function.name });
               }
               if (toolCall.function?.arguments) {
-                toolCalls[toolCall.index].function.arguments +=
-                  toolCall.function.arguments;
+                toolCalls[toolCall.index].function.arguments += toolCall.function.arguments;
                 // Optional: this.emit("tool_args", {
                 //   name: toolCalls[toolCall.index].function.name,
                 //   args: toolCall.function.arguments,
@@ -157,16 +149,16 @@ export class Agent<
       }
 
       // Warn about unexpected finish reasons
-      const validFinishReasons = ["stop", "tool_calls", "function_call"];
-      if (!validFinishReasons.includes(finishReason ?? "")) {
-        this.emit("warn", {
+      const validFinishReasons = ['stop', 'tool_calls', 'function_call'];
+      if (!validFinishReasons.includes(finishReason ?? '')) {
+        this.emit('warn', {
           message: `Unexpected finish reason: ${finishReason}`,
         });
       }
 
       // Create a synthetic message that looks like a non-streaming response
-      const syntheticMessage: ChatCompletion.Choice["message"] = {
-        role: "assistant",
+      const syntheticMessage: ChatCompletion.Choice['message'] = {
+        role: 'assistant',
         content: accumulatedContent,
         tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
         refusal: refusal ?? null,
@@ -174,32 +166,23 @@ export class Agent<
 
       // Return the final response if no tool calls are detected
       if (!syntheticMessage.tool_calls) {
-        return (syntheticMessage.content ??
-          "Sorry, no response was generated") as TReturn;
+        return (syntheticMessage.content ?? 'Sorry, no response was generated') as TReturn;
       }
 
       // Handle tool calls as before
-      const newMessages = await this.executeToolCalls(
-        syntheticMessage,
-        toolsWorkingMemory
-      );
+      const newMessages = await this.executeToolCalls(syntheticMessage, toolsWorkingMemory);
       messages.push(...newMessages);
       i++;
     }
 
-    return "Sorry, we reached the maximum number of iterations without a response" as TReturn;
+    return 'Sorry, we reached the maximum number of iterations without a response' as TReturn;
   }
 
-  protected updateLastUserMessage(
-    messages: ChatCompletionMessageParam[],
-    content: string
-  ) {
-    const lastUserMessage = messages.findLast(
-      (message) => message.role === "user"
-    );
+  protected updateLastUserMessage(messages: ChatCompletionMessageParam[], content: string) {
+    const lastUserMessage = messages.findLast((message) => message.role === 'user');
 
     if (!lastUserMessage) {
-      throw new Error("No user message found");
+      throw new Error('No user message found');
     }
 
     lastUserMessage.content = content;
@@ -230,13 +213,13 @@ export class Agent<
 
   protected ensureLLM() {
     if (!this.llm) {
-      throw new Error("LLM not configured");
+      throw new Error('LLM not configured');
     }
   }
 
   private async executeToolCalls(
-    message: ChatCompletion.Choice["message"],
-    workingMemory: WorkingMemory[]
+    message: ChatCompletion.Choice['message'],
+    workingMemory: WorkingMemory[],
   ): Promise<ChatCompletionMessageParam[]> {
     const toolCalls = message.tool_calls!;
 
@@ -245,7 +228,7 @@ export class Agent<
     let toolResults;
     if (this.allowParallelToolCalls) {
       toolResults = await Promise.all(
-        toolCalls.map((tc) => this.executeToolCall(tc, workingMemory))
+        toolCalls.map((tc) => this.executeToolCall(tc, workingMemory)),
       );
     } else {
       toolResults = [];
@@ -261,17 +244,17 @@ export class Agent<
         name: toolCall.function.name,
         arguments: toolCall.function.arguments,
         result: JSON.stringify(result),
-      }))
+      })),
     );
 
     return [
       {
-        role: "assistant",
-        content: message.content ?? "",
+        role: 'assistant',
+        content: message.content ?? '',
         tool_calls: toolCalls,
       },
       ...toolResults.map(({ result, toolCall }) => ({
-        role: "tool" as const,
+        role: 'tool' as const,
         content: JSON.stringify(result),
         tool_call_id: toolCall.id,
       })),
@@ -280,7 +263,7 @@ export class Agent<
 
   private async executeToolCall(
     toolCall: ChatCompletionMessageToolCall,
-    workingMemory: WorkingMemory[]
+    workingMemory: WorkingMemory[],
   ) {
     const tool = this.findTool(toolCall.function.name);
     if (!tool) {
@@ -320,11 +303,9 @@ export class Agent<
     });
   }
 
-  protected stringOrArrayToString(
-    value: string | string[] | undefined
-  ): string | undefined {
+  protected stringOrArrayToString(value: string | string[] | undefined): string | undefined {
     return Array.isArray(value)
-      ? value.map((item, index) => `${index + 1}. ${item}`).join("\n")
+      ? value.map((item, index) => `${index + 1}. ${item}`).join('\n')
       : value;
   }
 }

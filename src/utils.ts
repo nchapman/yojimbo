@@ -1,4 +1,4 @@
-import Handlebars from "handlebars";
+import Handlebars from 'handlebars';
 
 export function compileTemplate(template: string) {
   return Handlebars.compile(trimIndent(template), {
@@ -9,8 +9,8 @@ export function compileTemplate(template: string) {
 export function trimIndent(text: string) {
   return text
     .trim()
-    .split("\n")
+    .split('\n')
     .map((line) => line.trim())
     .filter((line) => line.length > 0)
-    .join("\n");
+    .join('\n');
 }

@@ -52,15 +52,35 @@ const team = new Team({
 
 const prompt = prompts[Math.floor(Math.random() * prompts.length)];
 
-team.emitter.on("*", (event, data) => {
-  const { tool, ...restData } = data;
+// team.emitter.on("*", (event, data) => {
+//   const { tool, ...restData } = data;
 
-  if (event === "delta" && "content" in data) {
-    process.stdout.write(data.content);
-  } else {
-    process.stdout.write("\n");
-    console.log(`${event}:`, restData);
-  }
+//   if (event === "delta" && "content" in data) {
+//     process.stdout.write(data.content);
+//   } else {
+//     process.stdout.write("\n");
+//     console.log(`${event}:`, restData);
+//   }
+// });
+
+team.on("plan", ({ plan }) => {
+  // Let's render the plan steps as a list with emojis for the status
+  const statusEmoji = {
+    pending: "⏳",
+    running: "🔄",
+    completed: "✅",
+    failed: "❌",
+  };
+  console.log("---");
+  console.log(
+    plan
+      .map(
+        (step) =>
+          `${statusEmoji[step.state]} ${step.content}`.slice(0, 80) +
+          (step.content.length > 80 ? "..." : "")
+      )
+      .join("\n")
+  );
 });
 
 const response = await team.execute({

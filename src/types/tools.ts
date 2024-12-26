@@ -1,5 +1,16 @@
+import { Emitter } from 'mitt';
 import { Tool } from '../tools/tool';
 import { PlanStep } from './team';
+import { JSONSchema } from './schema';
+
+export interface ToolConfig<TArgs extends BaseToolInput = DefaultToolInput> {
+  name: string;
+  description: string;
+  parameters?: JSONSchema<OmitBaseToolInput<TArgs>>;
+  emitter?: Emitter<ToolEvents>;
+  parentTool?: Tool<any, any>;
+  funcNameSuffix?: string;
+}
 
 // Base event type with common fields
 export type BaseToolEvent = {

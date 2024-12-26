@@ -3,14 +3,18 @@ import { DefaultToolInput } from '../types/tools';
 
 export class WeatherTool extends Tool<DefaultToolInput, string> {
   constructor() {
-    super('Weather Tool', 'Get weather information for a location', {
-      properties: {
-        input: {
-          type: 'string',
-          description: 'The location to get weather for',
+    super({
+      name: 'Weather Tool',
+      description: 'Get weather information for a location',
+      parameters: {
+        properties: {
+          input: {
+            type: 'string',
+            description: 'The location to get weather for',
+          },
         },
+        required: ['input'],
       },
-      required: ['input'],
     });
   }
 

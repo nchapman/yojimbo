@@ -134,7 +134,7 @@ export class Team<TArgs extends BaseToolInput = DefaultToolInput, TReturn = stri
       if (args.depth === 1) {
         const name = args.tool.funcName;
         const step = this.planState?.find(
-          (step) => step.content.includes(name) && step.state !== 'completed',
+          (step) => step.content.includes(name) && step.state !== 'completed'
         );
         // Only update if the step is not already completed
         if (step) {
@@ -211,8 +211,6 @@ export class Team<TArgs extends BaseToolInput = DefaultToolInput, TReturn = stri
   }
 
   protected convertPlanToSteps(plan: string): PlanStep[] {
-    console.log('plan', plan);
-
     return plan
       .split('\n')
       .filter((line) => line.trim()) // Filter out empty lines

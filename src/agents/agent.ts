@@ -15,6 +15,9 @@ export class Agent<TArgs extends BaseToolInput = DefaultToolInput, TReturn = str
   TArgs,
   TReturn
 > {
+  private static readonly DEFAULT_MAX_ITER = 5;
+  private static readonly VALID_FINISH_REASONS = ['stop', 'tool_calls', 'function_call'];
+
   public role: string;
   public goal: string;
   public approach?: string | string[];
@@ -27,16 +30,20 @@ export class Agent<TArgs extends BaseToolInput = DefaultToolInput, TReturn = str
   protected systemPrompt: string;
 
   constructor(config: AgentConfig<TArgs>) {
-    super(config.role, config.goal, config.parameters);
+    super({
+      name: config.role,
+      description: config.goal,
+      parameters: config.parameters,
+      funcNameSuffix: 'Agent',
+    });
     this.role = config.role;
     this.goal = config.goal;
     this.backstory = this.stringOrArrayToString(config.backstory);
     this.approach = this.stringOrArrayToString(config.approach);
     this.llm = config.llm;
     this.tools = config.tools ?? [];
-    this.maxIter = config.maxIter ?? Math.max(this.tools.length, 5);
+    this.maxIter = config.maxIter ?? Math.max(this.tools.length, Agent.DEFAULT_MAX_ITER);
     this.verbose = config.verbose ?? false;
-    this.funcName = this.getFuncName('Agent');
     this.systemPrompt = agentSystemPrompt;
     this.allowParallelToolCalls = config.allowParallelToolCalls ?? false;
 
@@ -134,14 +141,9 @@ export class Agent<TArgs extends BaseToolInput = DefaultToolInput, TReturn = str
               if (toolCall.id) toolCalls[toolCall.index].id = toolCall.id;
               if (toolCall.function?.name) {
                 toolCalls[toolCall.index].function.name = toolCall.function.name;
-                // Optional: this.emit("tool_call", { name: toolCall.function.name });
               }
               if (toolCall.function?.arguments) {
                 toolCalls[toolCall.index].function.arguments += toolCall.function.arguments;
-                // Optional: this.emit("tool_args", {
-                //   name: toolCalls[toolCall.index].function.name,
-                //   args: toolCall.function.arguments,
-                // });
               }
             }
           }
@@ -149,8 +151,7 @@ export class Agent<TArgs extends BaseToolInput = DefaultToolInput, TReturn = str
       }
 
       // Warn about unexpected finish reasons
-      const validFinishReasons = ['stop', 'tool_calls', 'function_call'];
-      if (!validFinishReasons.includes(finishReason ?? '')) {
+      if (!Agent.VALID_FINISH_REASONS.includes(finishReason ?? '')) {
         this.emit('warn', {
           message: `Unexpected finish reason: ${finishReason}`,
         });
@@ -219,7 +220,7 @@ export class Agent<TArgs extends BaseToolInput = DefaultToolInput, TReturn = str
 
   private async executeToolCalls(
     message: ChatCompletion.Choice['message'],
-    workingMemory: WorkingMemory[],
+    workingMemory: WorkingMemory[]
   ): Promise<ChatCompletionMessageParam[]> {
     const toolCalls = message.tool_calls!;
 
@@ -228,7 +229,7 @@ export class Agent<TArgs extends BaseToolInput = DefaultToolInput, TReturn = str
     let toolResults;
     if (this.allowParallelToolCalls) {
       toolResults = await Promise.all(
-        toolCalls.map((tc) => this.executeToolCall(tc, workingMemory)),
+        toolCalls.map((tc) => this.executeToolCall(tc, workingMemory))
       );
     } else {
       toolResults = [];
@@ -244,7 +245,7 @@ export class Agent<TArgs extends BaseToolInput = DefaultToolInput, TReturn = str
         name: toolCall.function.name,
         arguments: toolCall.function.arguments,
         result: JSON.stringify(result),
-      })),
+      }))
     );
 
     return [
@@ -263,7 +264,7 @@ export class Agent<TArgs extends BaseToolInput = DefaultToolInput, TReturn = str
 
   private async executeToolCall(
     toolCall: ChatCompletionMessageToolCall,
-    workingMemory: WorkingMemory[],
+    workingMemory: WorkingMemory[]
   ) {
     const tool = this.findTool(toolCall.function.name);
     if (!tool) {

@@ -8,6 +8,7 @@ import {
   DefaultToolInput,
   BaseToolInput,
   OmitBaseToolInput,
+  ToolConfig,
 } from '../types/tools';
 import Ajv from 'ajv';
 
@@ -22,30 +23,25 @@ const DEFAULT_PARAMETERS: JSONSchema<Omit<DefaultToolInput, keyof BaseToolInput>
 };
 
 export abstract class Tool<TArgs extends BaseToolInput = DefaultToolInput, TReturn = string> {
-  id: string;
-  funcName: string;
-  name: string;
-  description: string;
-  parameters: JSONSchema<OmitBaseToolInput<TArgs>>;
-  emitter: Emitter<ToolEvents>;
-  parentTool?: Tool<any, any>;
+  public emitter: Emitter<ToolEvents>;
+  public parentTool?: Tool<any, any>;
 
-  constructor(
-    name: string,
-    description: string,
-    parameters: JSONSchema<OmitBaseToolInput<TArgs>> = DEFAULT_PARAMETERS as JSONSchema<
-      OmitBaseToolInput<TArgs>
-    >,
-    emitter?: Emitter<ToolEvents>,
-    parentTool?: Tool<any, any>,
-  ) {
+  public readonly id: string;
+  public readonly name: string;
+  public readonly description: string;
+  public readonly funcName: string;
+
+  protected readonly parameters: JSONSchema<OmitBaseToolInput<TArgs>>;
+
+  constructor(config: ToolConfig<TArgs>) {
     this.id = ulid();
-    this.name = name;
-    this.description = description;
-    this.parameters = parameters;
-    this.funcName = this.getFuncName('Tool');
-    this.emitter = emitter || mitt();
-    this.parentTool = parentTool;
+    this.name = config.name;
+    this.description = config.description;
+    this.parameters =
+      config.parameters || (DEFAULT_PARAMETERS as JSONSchema<OmitBaseToolInput<TArgs>>);
+    this.funcName = this.getFuncName(config.funcNameSuffix ?? 'Tool');
+    this.emitter = config.emitter || mitt();
+    this.parentTool = config.parentTool;
   }
 
   public toSchema(): ChatCompletionTool {
@@ -90,9 +86,17 @@ export abstract class Tool<TArgs extends BaseToolInput = DefaultToolInput, TRetu
     }
   }
 
+  public on<K extends keyof ToolEvents>(event: K, listener: (data: ToolEvents[K]) => void): void {
+    this.emitter.on(event, listener as any);
+  }
+
+  public off<K extends keyof ToolEvents>(event: K, listener: (data: ToolEvents[K]) => void): void {
+    this.emitter.off(event, listener as any);
+  }
+
   protected abstract run(args: TArgs): Promise<TReturn>;
 
-  protected getFuncName(type: string) {
+  protected getFuncName(type: string): string {
     let funcName = this.name.replace(/\s+/g, '');
 
     // Append Agent if it's not already in the name
@@ -116,8 +120,8 @@ export abstract class Tool<TArgs extends BaseToolInput = DefaultToolInput, TRetu
 
   protected emit(
     event: keyof ToolEvents,
-    data: Omit<ToolEvents[keyof ToolEvents], keyof BaseToolEvent>,
-  ) {
+    data: Omit<ToolEvents[keyof ToolEvents], keyof BaseToolEvent>
+  ): void {
     if (!this.emitter) return;
 
     const allData = {
@@ -130,15 +134,7 @@ export abstract class Tool<TArgs extends BaseToolInput = DefaultToolInput, TRetu
     this.emitter.emit(event, allData);
   }
 
-  public on<K extends keyof ToolEvents>(event: K, listener: (data: ToolEvents[K]) => void) {
-    this.emitter.on(event, listener as any);
-  }
-
-  public off<K extends keyof ToolEvents>(event: K, listener: (data: ToolEvents[K]) => void) {
-    this.emitter.off(event, listener as any);
-  }
-
-  protected validateArgsOrThrow(args: TArgs) {
+  protected validateArgsOrThrow(args: TArgs): void {
     const ajv = new Ajv({ strict: false });
     const validator = ajv.compile(this.parameters);
     const isValid = validator(args);

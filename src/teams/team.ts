@@ -6,8 +6,8 @@ import { Agent } from "../agents/agent";
 import { BaseToolInput, DefaultToolInput } from "../types/tools";
 import { TeamConfig } from "../types/team";
 import {
+  buildAgentPrompt,
   buildTeamPrompt,
-  buildTeamBasePrompt,
   buildTeamPlanPrompt,
   teamSystemPrompt,
 } from "../prompts";
@@ -104,12 +104,12 @@ export class Team<
   }
 
   protected getBasePrompt(args: TArgs, includeTools = true): string {
-    return buildTeamBasePrompt({
+    return buildAgentPrompt({
       role: this.role,
       goal: this.goal,
       approach: this.approach,
       backstory: this.backstory,
-      agents: includeTools ? this.agents : undefined,
+      tools: includeTools ? this.agents : undefined,
       args: JSON.stringify(args),
     });
   }

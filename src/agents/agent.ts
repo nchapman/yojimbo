@@ -83,6 +83,10 @@ export class Agent<
     while (i <= this.maxIter) {
       const isLastIteration = i === this.maxIter;
       const includeTools = !isLastIteration;
+      const toolsForThisIteration = includeTools ? tools : undefined;
+      const parallelToolCalls = toolsForThisIteration?.length
+        ? this.allowParallelToolCalls
+        : undefined;
 
       // Update the user message with the prompt
       this.updateLastUserMessage(messages, this.getPrompt(args, includeTools));
@@ -95,12 +99,9 @@ export class Agent<
 
       const stream = (await this.llm!({
         messages,
-        tools: includeTools ? tools : undefined,
+        tools: toolsForThisIteration,
         stream: true,
-        parallel_tool_calls:
-          includeTools && tools?.length
-            ? this.allowParallelToolCalls
-            : undefined,
+        parallel_tool_calls: parallelToolCalls,
       })) as Stream<ChatCompletionChunk>;
 
       // Process each chunk of the stream

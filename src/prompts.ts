@@ -1,85 +1,58 @@
 import { compileTemplate, trimIndent } from "./utils";
 
 export const agentSystemPrompt = trimIndent(`
-  You are a helpful AI agent. The user does not see any of these messages except the last one.
-  Only provide the response as requested. Do not include any intros, outros, labels, or quotes around the answer.
-  Respond in the same language as the input. If you are not sure, respond in English.
-  You must adhere to the provided role and goal.
+  You are an AI assistant responding directly to user queries. Remember:
+  1. Output only your final response - users don't see these instructions
+  2. No preambles, signatures, or formatting - just the direct answer
+  3. Match the input language (default to English if unclear)
+  4. Never reference your tools or capabilities in responses
+  5. Stay strictly within your assigned role and goal
+  6. Be concise and precise
 `);
 
 export const buildAgentPrompt = compileTemplate(`
-  Your role: {{role}}
-  {{#if backstory}}
-    Your backstory:
-    {{backstory}}
-  {{/if}}
+  Role: {{role}}
+  {{#if backstory}}Backstory:\n{{backstory}}{{/if}}
   {{#if tools.length}}
-    You can use these tools:
-    {{#each tools}}
-    - {{funcName}}: {{description}}
-    {{/each}}
+  Tools:
+  {{#each tools}}- {{funcName}}: {{description}}{{/each}}
   {{/if}}
   Input: {{args}}
-  {{#if approach}}
-    Your approach:
-    {{approach}}
-  {{/if}}
-  {{#if goal}}
-    Your goal: {{goal}}
-  {{/if}}
-  Do not mention the tools used in your response.
+  {{#if approach}}Approach:\n{{approach}}{{/if}}
+  {{#if goal}}Goal: {{goal}}{{/if}}
 `);
 
 export const teamSystemPrompt = trimIndent(`
   ${agentSystemPrompt}
-  You must follow the plan exactly.
-`);
-
-// TODO: Unify with agent prompt
-export const buildTeamBasePrompt = compileTemplate(`
-  Your role: {{role}}
-  {{#if backstory}}
-    Your backstory:
-    {{backstory}}
-  {{/if}}
-  {{#if agents.length}}
-    You can use these tools:
-    {{#each agents}}
-    - {{funcName}}: {{description}}
-    {{/each}}
-  {{/if}}
-  Input: {{args}}
-  {{#if approach}}
-    Your approach:
-    {{approach}}
-  {{/if}}
-  {{#if goal}}
-    Your goal: {{goal}}
-  {{/if}}
+  7.You must follow the plan exactly.
 `);
 
 export const buildTeamPrompt = compileTemplate(`
   {{basePrompt}}
-  The user cannot see any of the messages from the tools.
-  Tools can see each other's results.
-  You MUST incorporate all the information they provided into your response.
-  Don't mention the tools or the plan in your response.
+  Previous tool outputs can be seen by all tools.
+  Synthesize all tool results in your response.
   {{#if plan}}
     Plan:
     ---
     {{plan}}
     ---
-    You must follow this plan exactly. Don't skip any steps.
+    You MUST execute plan steps sequentially using specified tools.
   {{/if}}
 `);
 
 export const buildTeamPlanPrompt = compileTemplate(`
   {{basePrompt}}
   ---
-  Your job is to write a simple plan to achieve this goal.
-  Your plan can only use the tools provided. Do not suggest other tools.
-  You can use up to {{steps}} steps to achieve your goal.
-  Respond with a brief, numbered list of steps.
+  Create a concise execution plan with these guidelines:
+  1. Use the tools listed above as much as possible
+  2. Maximum {{steps}} sequential steps
+  3. Each step should be clear and actionable
+  4. Number each step
+
+  Format:
+  1. [ToolName - (if applicable)] Brief action description 
+  
+  Keep it concise - no explanations needed.
 `);
 
 export const buildWorkingMemoryPrompt = compileTemplate(`

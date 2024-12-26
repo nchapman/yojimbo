@@ -137,6 +137,20 @@ export abstract class Tool<
     this.emitter.emit(event, allData);
   }
 
+  public on<K extends keyof ToolEvents>(
+    event: K,
+    listener: (data: ToolEvents[K]) => void
+  ) {
+    this.emitter.on(event, listener as any);
+  }
+
+  public off<K extends keyof ToolEvents>(
+    event: K,
+    listener: (data: ToolEvents[K]) => void
+  ) {
+    this.emitter.off(event, listener as any);
+  }
+
   protected validateArgsOrThrow(args: TArgs) {
     const ajv = new Ajv({ strict: false });
     const validator = ajv.compile(this.parameters);

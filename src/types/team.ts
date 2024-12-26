@@ -9,3 +9,9 @@ export interface TeamConfig<TArgs = DefaultToolInput>
   plan?: string | string[];
   agents: Agent[];
 }
+
+export interface PlanStep {
+  step: number;
+  content: string;
+  state: "pending" | "running" | "completed" | "failed";
+}

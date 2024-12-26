@@ -1,4 +1,5 @@
 import { Tool } from "../tools/tool";
+import { PlanStep } from "./team";
 
 // Base event type with common fields
 export type BaseToolEvent = {
@@ -25,6 +26,14 @@ export type ToolEvents = {
   warn: BaseToolEvent & {
     message: string;
   };
+  plan: BaseToolEvent & {
+    plan: PlanStep[];
+  };
+};
+
+export type ToolEventListener = {
+  event: keyof ToolEvents;
+  handler: (data: ToolEvents[keyof ToolEvents]) => void;
 };
 
 export interface WorkingMemory {

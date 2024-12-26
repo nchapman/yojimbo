@@ -136,7 +136,7 @@ export class Team<
     // Emit the initial plan
     this.emit("plan", { plan: this.planState });
 
-    // Common handler for both start and complete events
+    // Handler for depth 1 start/complete events
     const handlePlanEvent =
       (eventType: "running" | "completed") => (args: any) => {
         if (args.depth === 1) {
@@ -152,6 +152,26 @@ export class Team<
         }
       };
 
+    // Handle delta events from current team
+    const deltaHandler = (args: any) => {
+      if (args.depth === 0) {
+        // Mark all steps as completed
+        this.completePlan();
+
+        // Remove this listener since we only need it once
+        // TODO: Add a once method that handles depth and makes this easier
+        const deltaListener = this.planListeners.find(
+          (l) => l.event === "delta"
+        );
+        if (deltaListener) {
+          this.off("delta", deltaListener.handler);
+          this.planListeners = this.planListeners.filter(
+            (l) => l !== deltaListener
+          );
+        }
+      }
+    };
+
     // Store listeners so we can remove them later
     const startHandler = handlePlanEvent("running");
     const completeHandler = handlePlanEvent("completed");
@@ -159,6 +179,7 @@ export class Team<
     this.planListeners = [
       { event: "start", handler: startHandler },
       { event: "complete", handler: completeHandler },
+      { event: "delta", handler: deltaHandler },
     ];
 
     // Attach listeners
@@ -170,13 +191,8 @@ export class Team<
   protected stopPlanUpdates() {
     if (!this.planListeners) return;
 
-    // Mark all steps as completed
-    if (this.planState) {
-      this.planState.forEach((step) => {
-        step.state = "completed";
-      });
-      this.emit("plan", { plan: this.planState });
-    }
+    // Make sure all steps are completed
+    this.completePlan();
 
     // Remove listeners
     this.planListeners.forEach(({ event, handler }) => {
@@ -188,11 +204,34 @@ export class Team<
     this.planState = undefined;
   }
 
+  protected completePlan() {
+    if (!this.planState) return;
+
+    let statesChanged = false;
+
+    this.planState.forEach((step) => {
+      if (step.state === "pending" || step.state === "running") {
+        step.state = "completed";
+        statesChanged = true;
+      }
+    });
+
+    // Only emit if states were changed
+    if (statesChanged) {
+      this.emit("plan", { plan: this.planState });
+    }
+  }
+
   protected convertPlanToSteps(plan: string): PlanStep[] {
-    return plan.split("\n").map((line, index) => ({
-      step: index + 1,
-      content: line.replace(/^\d+\.\s*/, ""),
-      state: "pending",
-    }));
+    console.log("plan", plan);
+
+    return plan
+      .split("\n")
+      .filter((line) => line.trim()) // Filter out empty lines
+      .map((line, index) => ({
+        step: index + 1,
+        content: line.replace(/^\d+\.\s*/, ""),
+        state: "pending",
+      }));
   }
 }

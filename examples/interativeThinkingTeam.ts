@@ -11,22 +11,10 @@ const openai = new OpenAI({
 // Create the LLM completion function
 const llm: LLMCompletion = async (args) => {
   return openai.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: "gpt-4o",
     ...args,
   });
 };
-
-// const customPlan = `
-// Use one agent at a time. You must use the output of the previous agent as the input for the next agent.
-// 1. Analyst breaks down the problem into core components and identifies key challenges
-// 2. Strategist develops a solution framework based on the analysis
-// 3. Critic evaluates the strategy and highlights potential issues
-// 4. Strategist refines the solution incorporating critic's feedback
-// 5. You synthesize the final response:
-//    - Context and problem statement
-//    - Structured solution
-//    - Key considerations and mitigation strategies
-// `;
 
 const prompts = [
   "Analyze the complex interplay of social, economic, and political factors that led to the fall of the Soviet Union. Focus on key events like Gorbachev's reforms, the Chernobyl disaster, and the role of Western influence. Explore alternative outcomes if specific policies had been different.",
@@ -44,45 +32,21 @@ const prompts = [
 const analyst = new Agent({
   role: "Analyst",
   goal: "Break down the topic into a clear analytical framework that surfaces key insights and challenges",
-  approach: [
-    "Break down key elements and relationships",
-    "Identify relevant contexts and perspectives",
-    "Surface important questions and challenges",
-    "Create an organized framework for deeper exploration",
-  ],
 });
 
 const strategist = new Agent({
   role: "Strategist",
   goal: "Develop a comprehensive solution that addresses the core challenges identified",
-  approach: [
-    "Build on the analyst's framework",
-    "Construct clear arguments and explanations",
-    "Draw meaningful connections",
-    "Propose well-reasoned approaches or solutions",
-  ],
 });
 
 const critic = new Agent({
   role: "Critic",
   goal: "Evaluate and strengthen the proposed solution",
-  approach: [
-    "Examine logical consistency",
-    "Identify gaps or weaknesses",
-    "Test key arguments and assumptions",
-    "Suggest specific refinements to strengthen the analysis",
-  ],
 });
 
 const team = new Team({
   agents: [analyst, strategist, critic],
   goal: "Generate an insightful, well-structured response that demonstrates deep comprehension of the topic",
-  approach: [
-    "Provide relevant context and foundational understanding",
-    "Develop clear, well-reasoned arguments or solutions",
-    "Address complexities and alternative perspectives",
-    "Deliver a cohesive narrative",
-  ],
   llm,
 });
 

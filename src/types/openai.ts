@@ -11,6 +11,7 @@ export {
   ChatCompletionCreateParams,
   ChatCompletionMessageParam,
   ChatCompletionTool,
+  ChatCompletionMessageToolCall,
 } from "openai/resources/chat/completions";
 export { Stream } from "openai/streaming";
 

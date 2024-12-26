@@ -4,6 +4,7 @@ import {
   ChatCompletionChunk,
   Stream,
   LLMCompletion,
+  ChatCompletionMessageToolCall,
 } from "../types/openai";
 import { Tool } from "../tools/tool";
 import { BaseToolInput, DefaultToolInput, WorkingMemory } from "../types/tools";
@@ -238,50 +239,26 @@ export class Agent<
   ): Promise<ChatCompletionMessageParam[]> {
     const toolCalls = message.tool_calls!;
 
-    const toolResults = await Promise.all(
-      toolCalls.map(async (toolCall) => {
-        const tool = this.findTool(toolCall.function.name);
-        if (!tool) {
-          return {
-            result: {
-              error: `Tool ${toolCall.function.name} not found`,
-            },
-            toolCall,
-          };
-        }
-
-        let args;
-        try {
-          args = JSON.parse(toolCall.function.arguments);
-        } catch (e) {
-          return {
-            result: {
-              error: `Invalid JSON object: ${toolCall.function.arguments}`,
-            },
-            toolCall,
-          };
-        }
-
-        try {
-          // Execute will throw if the arguments are invalid
-          const result = await tool.execute({ workingMemory, ...args });
-          return { args, result, toolCall };
-        } catch (e: any) {
-          return {
-            result: {
-              error: `Error executing tool: ${e.message}`,
-            },
-            toolCall,
-          };
-        }
-      })
-    );
+    // Execute tools either in parallel or series based on allowParallelToolCalls
+    // Models should respect this setting but it's not always the case (especially with open models)
+    let toolResults;
+    if (this.allowParallelToolCalls) {
+      toolResults = await Promise.all(
+        toolCalls.map((tc) => this.executeToolCall(tc, workingMemory))
+      );
+    } else {
+      toolResults = [];
+      for (const toolCall of toolCalls) {
+        const result = await this.executeToolCall(toolCall, workingMemory);
+        toolResults.push(result);
+      }
+    }
 
     // Add the tool results to the working memory
     workingMemory.push(
       ...toolResults.map(({ result, toolCall }) => ({
-        tool: toolCall.function.name,
-        input: toolCall.function.arguments,
+        name: toolCall.function.name,
+        arguments: toolCall.function.arguments,
         result: JSON.stringify(result),
       }))
     );
@@ -298,6 +275,41 @@ export class Agent<
         tool_call_id: toolCall.id,
       })),
     ];
+  }
+
+  private async executeToolCall(
+    toolCall: ChatCompletionMessageToolCall,
+    workingMemory: WorkingMemory[]
+  ) {
+    const tool = this.findTool(toolCall.function.name);
+    if (!tool) {
+      return {
+        result: { error: `Tool ${toolCall.function.name} not found` },
+        toolCall,
+      };
+    }
+
+    let args;
+    try {
+      args = JSON.parse(toolCall.function.arguments);
+    } catch (e) {
+      return {
+        result: {
+          error: `Invalid JSON object: ${toolCall.function.arguments}`,
+        },
+        toolCall,
+      };
+    }
+
+    try {
+      const result = await tool.execute({ workingMemory, ...args });
+      return { args, result, toolCall };
+    } catch (e: any) {
+      return {
+        result: { error: `Error executing tool: ${e.message}` },
+        toolCall,
+      };
+    }
   }
 
   protected workingMemoryToPrompt(workingMemory: WorkingMemory[]): string {

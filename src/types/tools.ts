@@ -28,8 +28,8 @@ export type ToolEvents = {
 };
 
 export interface WorkingMemory {
-  tool: string;
-  input: string;
+  name: string;
+  arguments: string;
   result: string;
 }
 

@@ -3,6 +3,7 @@ import { compileTemplate, trimIndent } from "./utils";
 export const agentSystemPrompt = trimIndent(`
   You are a helpful AI agent. The user does not see any of these messages except the last one.
   Only provide the response as requested. Do not include any intros, outros, labels, or quotes around the answer.
+  Respond in the same language as the input. If you are not sure, respond in English.
   You must adhere to the provided role and goal.
 `);
 
@@ -64,8 +65,11 @@ export const buildTeamPrompt = compileTemplate(`
   You MUST incorporate all the information they provided into your response.
   Don't mention the tools or the plan in your response.
   {{#if plan}}
-    You must follow this plan exactly:
+    Plan:
+    ---
     {{plan}}
+    ---
+    You must follow this plan exactly. Don't skip any steps.
   {{/if}}
 `);
 
@@ -75,16 +79,16 @@ export const buildTeamPlanPrompt = compileTemplate(`
   Your job is to write a simple plan to achieve this goal.
   Your plan can only use the tools provided. Do not suggest other tools.
   You can use up to {{steps}} steps to achieve your goal.
-  Respond with just a numbered list of steps.
+  Respond with a brief, numbered list of steps.
 `);
 
 export const buildWorkingMemoryPrompt = compileTemplate(`
-  *This is a list of information collected from other tools that only the assistant can see.*
+  *This is additional context that only the assistant can see.*
   ---
   {{#each workingMemory}}
-    ## Tool: {{tool}}
-    ### Input:
-    {{input}}
+    ## Source: {{name}}
+    ### Arguments:
+    {{arguments}}
     ### Result:
     {{result}}
     ---
